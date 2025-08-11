@@ -143,9 +143,9 @@ async function createNewRoom(petName, username) {
   return startSheet(room.keyBuffer, room.encryptionKeyBuffer, username)
 }
 
-async function joinExistingRoom(roomLink, username) {
+async function joinExistingRoom(roomLink, username, petName) {
   try {
-    const room = await lobby.joinRoom(roomLink, username)
+    const room = await lobby.joinRoom(roomLink, username, petName)
     
     // Store the current room link and name for clipboard functionality and headers
     currentRoomLink = roomLink
@@ -222,6 +222,11 @@ async function showMainMenu(sheet) {
         description: 'Create a new schema from file'
       },
       {
+        name: '✏️ Change Room Name',
+        value: 'change-room-name',
+        description: 'Change the local name for this room'
+      },
+      {
         name: '📋 Copy Room Link',
         value: 'copy-room-link',
         description: 'Copy room invite link to clipboard'
@@ -252,6 +257,9 @@ async function showMainMenu(sheet) {
         case 'add-schema':
           await showAddSchema(sheet)
           break
+        case 'change-room-name':
+          await showChangeRoomName(sheet)
+          break
         case 'copy-room-link':
           await copyRoomLinkToClipboard()
           break
@@ -268,6 +276,43 @@ async function showMainMenu(sheet) {
   }
 }
 
+
+async function showChangeRoomName(sheet) {
+  console.clear()
+  console.log(chalk.blue.bold(`✏️ Change Room Name - Current: ${currentRoomName || 'Unknown'}\n`))
+
+  try {
+    const newPetName = await input({
+      message: 'Enter new room name:',
+      default: currentRoomName || '',
+      validate: (input) => {
+        if (!input.trim()) return 'Room name is required'
+        return true
+      }
+    })
+
+    // Update the room name in the lobby
+    if (currentRoomLink) {
+      const decoded = z32.decode(currentRoomLink)
+      const key = decoded.subarray(0, 32)
+      const keyHex = key.toString('hex')
+      
+      await lobby.updateRoom(keyHex, { petName: newPetName })
+      currentRoomName = newPetName
+      
+      console.log(chalk.green(`✅ Room name changed to "${newPetName}"`))
+    } else {
+      console.log(chalk.yellow('Warning: Could not update room name (no room link available)'))
+    }
+    
+    await input({ message: 'Press Enter to continue...' })
+    return showMainMenu(sheet)
+  } catch (error) {
+    console.error(chalk.red('Error changing room name:'), error.message)
+    await input({ message: 'Press Enter to continue...' })
+    return showMainMenu(sheet)
+  }
+}
 
 async function showAddSchema(sheet) {
   console.clear()
@@ -919,7 +964,15 @@ async function showJoinRoom() {
       }
     })
 
-    const { sheet } = await joinExistingRoom(roomLink, username)
+    const petName = await input({
+      message: 'Enter a local name for this room (optional):',
+      validate: (input) => {
+        // Allow empty input for optional field
+        return true
+      }
+    })
+
+    const { sheet } = await joinExistingRoom(roomLink, username, petName.trim() || undefined)
     const member = await sheet.join(username)
     
     console.log(chalk.green('✅ Connected to schema sheets'))
