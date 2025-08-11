@@ -133,4 +133,77 @@ form > .btn-info {
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
+    gap: 2px !important;
+}
+
+/* Style array move up buttons */
+.array-item-move-up {
+    display: inline-block !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: white !important;
+    min-width: 40px !important;
+    height: 38px !important;
+}
+
+.array-item-move-up:hover:not(:disabled) {
+    background-color: #545b62 !important;
+    border-color: #4e555b !important;
+}
+
+.array-item-move-up:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* Style array move down buttons */
+.array-item-move-down {
+    display: inline-block !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: white !important;
+    min-width: 40px !important;
+    height: 38px !important;
+}
+
+.array-item-move-down:hover:not(:disabled) {
+    background-color: #545b62 !important;
+    border-color: #4e555b !important;
+}
+
+.array-item-move-down:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* Fallback for missing move up glyphicons */
+.array-item-move-up .glyphicon-arrow-up:before {
+    content: "↑";
+    font-weight: bold;
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* If move up glyphicon is missing entirely, add text */
+.array-item-move-up:empty:after {
+    content: "↑";
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Fallback for missing move down glyphicons */
+.array-item-move-down .glyphicon-arrow-down:before {
+    content: "↓";
+    font-weight: bold;
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* If move down glyphicon is missing entirely, add text */
+.array-item-move-down:empty:after {
+    content: "↓";
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
 }
