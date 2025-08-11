@@ -1,6 +1,5 @@
 const { useState, useEffect } = React;
-const Form = RJSFCore.default;
-const validator = RJSFValidatorAjv8.default;
+const Form = JSONSchemaForm.default;
 
 function App() {
     const [schema, setSchema] = useState(null);
@@ -109,12 +108,13 @@ function App() {
             React.createElement('p', null, 'Fill out the form below based on the schema')
         ),
         error && React.createElement('div', { className: 'error' }, error),
-        schema && React.createElement(Form, {
-            schema: schema,
-            validator: validator,
-            onSubmit: handleSubmit,
-            disabled: submitting,
-            children: React.createElement('div', { className: 'form-actions' },
+        schema && React.createElement('div', null,
+            React.createElement(Form, {
+                schema: schema,
+                onSubmit: handleSubmit,
+                disabled: submitting
+            }),
+            React.createElement('div', { className: 'form-actions' },
                 React.createElement('button', {
                     type: 'button',
                     className: 'btn btn-secondary',
@@ -124,10 +124,22 @@ function App() {
                 React.createElement('button', {
                     type: 'submit',
                     className: 'btn btn-primary',
-                    disabled: submitting
+                    disabled: submitting,
+                    onClick: (e) => {
+                        e.preventDefault();
+                        const form = document.querySelector('form');
+                        if (form) {
+                            const formData = new FormData(form);
+                            const jsonData = {};
+                            for (let [key, value] of formData.entries()) {
+                                jsonData[key] = value;
+                            }
+                            handleSubmit({ formData: jsonData });
+                        }
+                    }
                 }, submitting ? 'Submitting...' : 'Submit')
             )
-        })
+        )
     );
 }
 
