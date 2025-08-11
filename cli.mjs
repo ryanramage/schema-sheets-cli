@@ -21,6 +21,7 @@ import Table from 'cli-table3'
 import toClipboard from 'to-clipboard-android'
 import Ajv from 'ajv'
 import addFormats from "ajv-formats"
+import Wakeup from 'protomux-wakeup'
 import { createLobby } from './lobby.mjs'
 const paths = envPaths('schema-sheets')
 const execAsync = promisify(exec)
@@ -54,7 +55,8 @@ await makeDirectory(corestorePath)
 
 const store = new Corestore(corestorePath)
 const swarm = new Hyperswarm()
-const blind = new BlindPeering(swarm, store, { mirrors: config.DEFAULT_BLIND_PEER_KEYS })
+const wakeup = new Wakeup()
+const blind = new BlindPeering(swarm, store, { wakeup, mirrors: config.DEFAULT_BLIND_PEER_KEYS })
 const lobby = createLobby(config.storage)
 
 // Track current sheet for cleanup
@@ -109,10 +111,11 @@ async function teardown () {
 swarm.on('connection', c => {
   c.on('close', function () {})
   store.replicate(c)
+  wakeup.addStream(c)
 })
 
 async function startSheet (key, encryptionKey, username) {
-  const sheet = new SchemaSheets(store.namespace(crypto.randomBytes(32)), key, { encryptionKey })
+  const sheet = new SchemaSheets(store.namespace(crypto.randomBytes(32)), key, { encryptionKey, wakeup })
   await sheet.ready()
   swarm.join(sheet.base.discoveryKey)
   blind.addAutobaseBackground(sheet.base)

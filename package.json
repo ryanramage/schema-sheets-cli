@@ -22,6 +22,7 @@
     "hyperswarm": "^4.12.1",
     "inquirer-file-selector": "^0.6.2",
     "make-dir": "^5.0.0",
+    "protomux-wakeup": "^2.5.0",
     "schema-sheets": "^1.0.0",
     "to-clipboard-android": "^0.2.0",
     "z32": "^1.1.0"
