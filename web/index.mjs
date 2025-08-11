@@ -61,6 +61,10 @@ export class WebFormServer {
         await this.serveFile(res, 'assets/app.js', 'application/javascript')
       } else if (pathname === '/styles.css') {
         await this.serveFile(res, 'assets/styles.css', 'text/css')
+      } else if (pathname === '/favicon.ico') {
+        // Return empty favicon to prevent 404
+        res.writeHead(204)
+        res.end()
       } else if (pathname.startsWith('/api/schema/')) {
         const schemaId = pathname.split('/')[3]
         await this.handleSchemaRequest(res, schemaId, query.session)
