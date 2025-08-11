@@ -172,10 +172,17 @@ const issueSchema = {
   type: 'object',
   properties: {
     title: { type: 'string' },
-    status: { type: 'string' },
-    priority: { type: 'string' },
+    status: { 
+      type: 'string',
+      enum: ['open', 'in-progress', 'closed']
+    },
+    priority: { 
+      type: 'string',
+      enum: ['low', 'med', 'high']
+    },
     description: { type: 'string' }
-  }
+  },
+  required: ['title', 'status', 'priority']
 }
 
 const issue = {
@@ -319,6 +326,35 @@ async function showAddSchema(sheet) {
   console.clear()
   console.log(chalk.blue.bold(`➕ Add New Schema - Room: ${currentRoomName || 'Unknown'}\n`))
 
+  const method = await select({
+    message: 'How would you like to add the schema?',
+    choices: [
+      {
+        name: '📄 Select JSON File',
+        value: 'file',
+        description: 'Choose a JSON schema file from your computer'
+      },
+      {
+        name: '🌐 Enter URL',
+        value: 'url',
+        description: 'Download schema from a URL'
+      },
+      {
+        name: '📋 Use Example Issue Schema',
+        value: 'example',
+        description: 'Use a pre-built issue tracking schema'
+      },
+      {
+        name: chalk.gray('← Back to Main Menu'),
+        value: 'back'
+      }
+    ]
+  })
+
+  if (method === 'back') {
+    return showMainMenu(sheet)
+  }
+
   try {
     const name = await input({
       message: 'Enter schema name:',
@@ -328,17 +364,46 @@ async function showAddSchema(sheet) {
       }
     })
 
-    const filePath = await fileSelector({
-      message: 'Select schema JSON file:',
-      type: 'file',
-      filter: item => item.isDirectory || item.name.endsWith('.json'),
-      ...(lastUsedDirectory && { basePath: lastUsedDirectory })
-    })
+    let schemaContent
 
-    // Remember the directory for next time
-    lastUsedDirectory = dirname(filePath)
+    if (method === 'file') {
+      const filePath = await fileSelector({
+        message: 'Select schema JSON file:',
+        type: 'file',
+        filter: item => item.isDirectory || item.name.endsWith('.json'),
+        ...(lastUsedDirectory && { basePath: lastUsedDirectory })
+      })
 
-    const schemaContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+      // Remember the directory for next time
+      lastUsedDirectory = dirname(filePath)
+      schemaContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    } else if (method === 'url') {
+      const url = await input({
+        message: 'Enter schema URL:',
+        validate: (input) => {
+          if (!input.trim()) return 'URL is required'
+          try {
+            new URL(input)
+            return true
+          } catch {
+            return 'Invalid URL format'
+          }
+        }
+      })
+
+      console.log(chalk.gray('Downloading schema...'))
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`Failed to download schema: ${response.status} ${response.statusText}`)
+      }
+      schemaContent = await response.json()
+    } else if (method === 'example') {
+      schemaContent = issueSchema
+      console.log(chalk.gray('\nUsing example issue schema:'))
+      console.log(JSON.stringify(schemaContent, null, 2))
+      console.log('')
+    }
+
     const schemaId = await sheet.addNewSchema(name, schemaContent)
     
     console.log(chalk.green(`✅ Schema "${name}" added successfully with ID: ${schemaId}`))
