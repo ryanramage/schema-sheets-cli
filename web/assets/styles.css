@@ -96,3 +96,41 @@ form > .btn-info {
     content: "Add";
     font-size: 12px;
 }
+
+/* Style array remove buttons */
+.array-item-remove {
+    display: inline-block !important;
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+    min-width: 40px !important;
+    height: 38px !important;
+}
+
+.array-item-remove:hover {
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+}
+
+/* Fallback for missing remove glyphicons */
+.array-item-remove .glyphicon-remove:before {
+    content: "×";
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* If remove glyphicon is missing entirely, add text */
+.array-item-remove:empty:after {
+    content: "×";
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Fix button group styling */
+.btn-group {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
