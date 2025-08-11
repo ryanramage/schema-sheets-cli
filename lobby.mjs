@@ -46,9 +46,10 @@ export class RoomLobby {
    * Join an existing room from a room link
    * @param {string} roomLink - z32 encoded room link (key + encryptionKey)
    * @param {string} username - User's name in this room
+   * @param {string} petName - Optional local pet name for the room
    * @returns {Object} Room data
    */
-  async joinRoom(roomLink, username) {
+  async joinRoom(roomLink, username, petName) {
     try {
       // Decode the room link to get key and encryption key
       const decoded = z32.decode(roomLink)
@@ -77,7 +78,7 @@ export class RoomLobby {
         key: z32.encode(key),
         encryptionKey: z32.encode(encryptionKey),
         createdAt: Date.now(),
-        petName: `Room ${keyHex.substring(0, 8)}...`, // Default name
+        petName: petName || `Room ${keyHex.substring(0, 8)}...`, // Default name
         username,
         isCreator: false
       }
