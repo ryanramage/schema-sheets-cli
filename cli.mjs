@@ -111,7 +111,7 @@ swarm.on('connection', c => {
   store.replicate(c)
 })
 
-async function startSheet (key, encryptionKey) {
+async function startSheet (key, encryptionKey, username) {
   const sheet = new SchemaSheets(store.namespace(crypto.randomBytes(32)), key, { encryptionKey })
   await sheet.ready()
   swarm.join(sheet.base.discoveryKey)
@@ -119,6 +119,9 @@ async function startSheet (key, encryptionKey) {
   
   // Track the current sheet for cleanup
   currentSheet = sheet
+  if (username) {
+    await sheet.join(username)
+  }
   
   return { key: sheet.base.key, local: sheet.base.local.key, sheet }
 }
@@ -134,7 +137,7 @@ async function createNewRoom(petName, username) {
   console.log(chalk.green(`✅ Room "${petName}" created!`))
   console.log(chalk.blue(`Room Link: ${roomLink}`))
   
-  return startSheet(room.keyBuffer, room.encryptionKeyBuffer)
+  return startSheet(room.keyBuffer, room.encryptionKeyBuffer, username)
 }
 
 async function joinExistingRoom(roomLink, username) {
@@ -147,7 +150,7 @@ async function joinExistingRoom(roomLink, username) {
     
     console.log(chalk.green(`✅ Joined room "${room.petName}"`))
     
-    return startSheet(room.keyBuffer, room.encryptionKeyBuffer)
+    return startSheet(room.keyBuffer, room.encryptionKeyBuffer, username)
   } catch (error) {
     console.error(chalk.red('Failed to join room:'), error.message)
     throw error
