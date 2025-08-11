@@ -66,7 +66,7 @@ function App() {
             setSuccess(true);
             setTimeout(() => {
                 window.close();
-            }, 20000);
+            }, 2000);
         } catch (err) {
             setError(err.message);
         } finally {
