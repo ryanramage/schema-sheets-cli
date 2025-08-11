@@ -108,11 +108,13 @@ function App() {
             React.createElement('p', null, 'Fill out the form below based on the schema')
         ),
         error && React.createElement('div', { className: 'alert alert-danger' }, error),
-        schema && React.createElement(Form, {
-            schema: schema,
-            onSubmit: handleSubmit,
-            disabled: submitting,
-            children: React.createElement('div', { className: 'form-actions' },
+        schema && React.createElement('div', null,
+            React.createElement(Form, {
+                schema: schema,
+                onSubmit: handleSubmit,
+                disabled: submitting
+            }),
+            React.createElement('div', { className: 'form-actions' },
                 React.createElement('button', {
                     type: 'button',
                     className: 'btn btn-outline-secondary',
@@ -120,9 +122,15 @@ function App() {
                     disabled: submitting
                 }, 'Cancel'),
                 React.createElement('button', {
-                    type: 'submit',
+                    type: 'button',
                     className: 'btn btn-primary',
-                    disabled: submitting
+                    disabled: submitting,
+                    onClick: () => {
+                        const form = document.querySelector('form');
+                        if (form) {
+                            form.requestSubmit();
+                        }
+                    }
                 }, submitting ? 
                     React.createElement('span', null,
                         React.createElement('span', { 

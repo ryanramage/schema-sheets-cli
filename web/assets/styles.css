@@ -61,6 +61,12 @@ body {
     margin-bottom: 0;
 }
 
-.rjsf .btn-info {
-    display: none; /* Hide the default submit button */
+/* Hide the default submit button */
+form button[type="submit"] {
+    display: none !important;
+}
+
+/* Also hide any buttons with btn-info class */
+.btn-info {
+    display: none !important;
 }
