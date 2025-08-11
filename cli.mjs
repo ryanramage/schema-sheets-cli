@@ -23,6 +23,7 @@ import Ajv from 'ajv'
 import addFormats from "ajv-formats"
 import Wakeup from 'protomux-wakeup'
 import { createLobby } from './lobby.mjs'
+import { WebFormServer } from './web/index.mjs'
 const paths = envPaths('schema-sheets')
 const execAsync = promisify(exec)
 
@@ -686,10 +687,87 @@ async function showRowList(sheet, schema) {
   }
 }
 
+async function showWebForm(sheet, schema) {
+  const webServer = new WebFormServer()
+  
+  try {
+    console.log(chalk.blue('Starting web form server...'))
+    const port = await webServer.start()
+    
+    const { sessionId, promise } = await webServer.createFormSession(schema.schemaId, schema.jsonSchema)
+    const url = `http://localhost:${port}/?session=${sessionId}&schema=${schema.schemaId}`
+    
+    console.log(chalk.green(`✅ Web form ready at: ${url}`))
+    console.log(chalk.gray('Opening browser... (Press Ctrl+C to cancel)'))
+    
+    // Open browser
+    const openCommand = process.platform === 'darwin' ? 'open' : 
+                       process.platform === 'win32' ? 'start' : 'xdg-open'
+    spawn(openCommand, [url], { detached: true, stdio: 'ignore' })
+    
+    // Wait for form completion
+    const result = await promise
+    
+    if (result.cancelled) {
+      console.log(chalk.yellow('Form cancelled'))
+      await input({ message: 'Press Enter to continue...' })
+      return showRowMenu(sheet, schema)
+    }
+    
+    if (result.success && result.data) {
+      console.log(chalk.green('✅ Form submitted successfully!'))
+      
+      // Add the row to the sheet
+      const rowId = await sheet.addRow(schema.schemaId, result.data)
+      console.log(chalk.green(`✅ Row added with ID: ${rowId}`))
+      
+      await input({ message: 'Press Enter to continue...' })
+      return showRowMenu(sheet, schema)
+    }
+    
+  } catch (error) {
+    console.error(chalk.red('Error with web form:'), error.message)
+    await input({ message: 'Press Enter to continue...' })
+    return showRowMenu(sheet, schema)
+  } finally {
+    await webServer.stop()
+    console.log(chalk.gray('Web server stopped'))
+  }
+}
+
 async function showAddRow(sheet, schema) {
   console.clear()
   console.log(chalk.blue.bold(`➕ Add Row to Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
 
+  const method = await select({
+    message: 'How would you like to add the row?',
+    choices: [
+      {
+        name: '📄 Select JSON File',
+        value: 'file',
+        description: 'Choose a JSON file from your computer'
+      },
+      {
+        name: '🌐 Web Form',
+        value: 'web',
+        description: 'Fill out a form in your browser'
+      },
+      {
+        name: chalk.gray('← Back to Row Menu'),
+        value: 'back'
+      }
+    ]
+  })
+
+  if (method === 'back') {
+    return showRowMenu(sheet, schema)
+  }
+
+  if (method === 'web') {
+    return showWebForm(sheet, schema)
+  }
+
+  // File method (existing code)
   try {
     const filePath = await fileSelector({
       message: 'Select JSON file:',
