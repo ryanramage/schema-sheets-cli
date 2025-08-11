@@ -3,6 +3,7 @@ import { readFile } from 'fs/promises'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { parse } from 'url'
+import chalk from 'chalk'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -124,6 +125,9 @@ export class WebFormServer {
         const data = JSON.parse(body)
         const { sessionId, formData } = data
 
+        console.log(chalk.blue('📝 Form data received:'))
+        console.log(JSON.stringify(formData, null, 2))
+
         const resolver = this.resolvers.get(sessionId)
         if (resolver) {
           resolver.resolve({ success: true, data: formData })
@@ -134,6 +138,7 @@ export class WebFormServer {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ success: true }))
       } catch (error) {
+        console.error(chalk.red('Error parsing form submission:'), error)
         res.writeHead(400, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Invalid JSON' }))
       }
