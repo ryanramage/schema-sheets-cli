@@ -1,0 +1,29 @@
+{
+  "name": "schema-sheets-cli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "schema-sheets": "./cli.mjs"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@holepunchto/blind-peering": "^1.8.2",
+    "@inquirer/prompts": "^7.8.1",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "chalk": "^5.5.0",
+    "cli-table3": "^0.6.5",
+    "corestore": "^7.4.5",
+    "cosmiconfig": "^9.0.0",
+    "env-paths": "^3.0.0",
+    "hypercore-crypto": "^3.6.1",
+    "hyperswarm": "^4.12.1",
+    "inquirer-file-selector": "^0.6.2",
+    "make-dir": "^5.0.0",
+    "schema-sheets": "^1.0.0",
+    "to-clipboard-android": "^0.2.0",
+    "z32": "^1.1.0"
+  }
+}
