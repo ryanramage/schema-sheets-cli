@@ -128,12 +128,27 @@ form > .btn-info {
     line-height: 1;
 }
 
-/* Fix button group styling */
+/* Fix button group styling - move to right side */
 .btn-group {
     display: flex !important;
-    justify-content: center !important;
+    justify-content: flex-end !important;
     align-items: center !important;
     gap: 2px !important;
+    margin-left: auto !important;
+    width: auto !important;
+    flex-shrink: 0 !important;
+}
+
+/* Make array items display as flex to push buttons right */
+.array-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+/* Ensure the input/content takes up available space */
+.array-item > *:not(.btn-group) {
+    flex: 1 !important;
 }
 
 /* Style array move up buttons */
