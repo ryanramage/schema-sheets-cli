@@ -83,3 +83,16 @@ form > .btn-info {
     background-color: #138496 !important;
     border-color: #117a8b !important;
 }
+
+/* Fallback for missing glyphicons */
+.btn-add .glyphicon-plus:before {
+    content: "+";
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* If glyphicon is missing entirely, add text */
+.btn-add:empty:after {
+    content: "Add";
+    font-size: 12px;
+}
