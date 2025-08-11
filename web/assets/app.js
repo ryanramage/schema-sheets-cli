@@ -95,9 +95,9 @@ function App() {
 
     if (success) {
         return React.createElement('div', { className: 'container' },
-            React.createElement('div', { className: 'success' },
-                React.createElement('h2', null, '✅ Success!'),
-                React.createElement('p', null, 'Form submitted successfully. This window will close automatically.')
+            React.createElement('div', { className: 'alert alert-success text-center' },
+                React.createElement('h2', { className: 'alert-heading' }, '✅ Success!'),
+                React.createElement('p', { className: 'mb-0' }, 'Form submitted successfully. This window will close automatically.')
             )
         );
     }
@@ -107,7 +107,7 @@ function App() {
             React.createElement('h1', null, 'Add New Row'),
             React.createElement('p', null, 'Fill out the form below based on the schema')
         ),
-        error && React.createElement('div', { className: 'error' }, error),
+        error && React.createElement('div', { className: 'alert alert-danger' }, error),
         schema && React.createElement('div', null,
             React.createElement(Form, {
                 schema: schema,
@@ -117,7 +117,7 @@ function App() {
             React.createElement('div', { className: 'form-actions' },
                 React.createElement('button', {
                     type: 'button',
-                    className: 'btn btn-secondary',
+                    className: 'btn btn-outline-secondary',
                     onClick: handleCancel,
                     disabled: submitting
                 }, 'Cancel'),
@@ -137,7 +137,16 @@ function App() {
                             handleSubmit({ formData: jsonData });
                         }
                     }
-                }, submitting ? 'Submitting...' : 'Submit')
+                }, submitting ? 
+                    React.createElement('span', null,
+                        React.createElement('span', { 
+                            className: 'spinner-border spinner-border-sm me-2',
+                            role: 'status',
+                            'aria-hidden': 'true'
+                        }),
+                        'Submitting...'
+                    ) : 'Submit'
+                )
             )
         )
     );

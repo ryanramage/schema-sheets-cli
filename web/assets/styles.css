@@ -1,94 +1,60 @@
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: #f5f5f5;
+    background-color: #f8f9fa;
 }
 
 .container {
     max-width: 800px;
-    margin: 0 auto;
+    margin: 2rem auto;
     background: white;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
 }
 
 .header {
-    margin-bottom: 30px;
+    margin-bottom: 2rem;
     text-align: center;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1rem;
 }
 
 .header h1 {
-    color: #333;
-    margin: 0 0 10px 0;
+    color: #212529;
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
 }
 
 .header p {
-    color: #666;
+    color: #6c757d;
     margin: 0;
+    font-size: 1.1rem;
 }
 
 .loading {
     text-align: center;
-    padding: 50px;
-    color: #666;
+    padding: 3rem;
+    color: #6c757d;
+    font-size: 1.1rem;
 }
 
 .error {
-    background-color: #fee;
-    border: 1px solid #fcc;
-    color: #c33;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 20px;
+    /* Use Bootstrap alert classes instead */
 }
 
 .success {
-    background-color: #efe;
-    border: 1px solid #cfc;
-    color: #3c3;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    text-align: center;
+    /* Use Bootstrap alert classes instead */
 }
 
 .form-actions {
     display: flex;
-    gap: 10px;
+    gap: 0.75rem;
     justify-content: flex-end;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #dee2e6;
 }
 
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.btn-primary {
-    background-color: #007bff;
-    color: white;
-}
-
-.btn-primary:hover {
-    background-color: #0056b3;
-}
-
-.btn-secondary {
-    background-color: #6c757d;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background-color: #545b62;
-}
+/* Bootstrap will handle button styles */
 
 /* Override some react-jsonschema-form styles */
 .rjsf {
