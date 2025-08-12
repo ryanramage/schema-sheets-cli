@@ -1,6 +1,13 @@
 # Schema Sheets CLI
 
 A peer-to-peer multiwriter room system for collaborative schema-based data entry. Create or join rooms to share and manage structured JSON data with real-time synchronization across all participants.
+## Usage
+
+Start the application:
+
+```bash
+npx schema-sheets-cli
+```
 
 ## Features
 
@@ -17,6 +24,7 @@ A peer-to-peer multiwriter room system for collaborative schema-based data entry
 
 ### Data Entry & Management
 - **Add Rows**: Import JSON data files that conform to your schemas
+- **Web Form**: Add rows with a temp web app that uses your schema to create a form
 - **List All Rows**: View all entries in a schema with tabular summaries
 - **Filter by Date**: Built-in date range filtering (today, yesterday, this week, last week, this month, last month, custom ranges)
 - **JMESPath Queries**: Advanced filtering using JMESPath expressions for complex data queries
@@ -42,13 +50,6 @@ For other systems see the [fx install](https://fx.wtf/install)
 
 When `fx` is available, you'll get an interactive, collapsible JSON viewer for examining row details. Without `fx`, the system falls back to plain JSON display.
 
-## Usage
-
-Start the application:
-
-```bash
-npx schema-sheets-cli
-```
 
 ### Creating and Sharing Rooms
 
