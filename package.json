@@ -5,9 +5,13 @@
   "bin": {
     "schema-sheets": "./cli.mjs"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Ryan Ramage",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanramage/schema-sheets-cli.git"
+  },
+  "license": "MIT",
+  "description": "p2p multiwriter form collection with a focus on timeseries query",
   "dependencies": {
     "@holepunchto/blind-peering": "^1.8.2",
     "@inquirer/prompts": "^7.8.1",
