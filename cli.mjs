@@ -230,7 +230,7 @@ async function showMainMenu(sheet) {
         description: 'Create a new schema from file'
       },
       {
-        name: '✏️ Change Room Name',
+        name: '🏷️  Change Room Name',
         value: 'change-room-name',
         description: 'Change the local name for this room'
       },

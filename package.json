@@ -1,6 +1,6 @@
 {
   "name": "schema-sheets-cli",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "main": "index.js",
   "bin": {
     "schema-sheets": "./cli.mjs"
@@ -27,7 +27,7 @@
     "inquirer-file-selector": "^0.6.2",
     "make-dir": "^5.0.0",
     "protomux-wakeup": "^2.5.0",
-    "schema-sheets": "^1.0.0",
+    "schema-sheets": "^2.0.0",
     "to-clipboard-android": "^0.2.0",
     "z32": "^1.1.0"
   }
