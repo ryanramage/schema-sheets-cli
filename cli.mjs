@@ -588,33 +588,206 @@ async function showFilterRows(sheet, schema) {
     lte = range.lte
   }
 
-  // Ask for optional JMESPath query
-  console.log(chalk.gray('\nOptional: Add a JMESPath query to further filter results'))
-  console.log(chalk.gray('Examples: title, status == `open`, priority == `high`'))
-  console.log(chalk.gray('Leave empty to skip additional filtering\n'))
-  
-  const jmesQuery = await input({
-    message: 'JMESPath query (optional):',
-    default: lastJmesQuery,
-    prefill: 'editable',
-    validate: (input) => {
-      // Allow empty input
-      if (!input.trim()) return true
-      // Basic validation - just check it's not obviously malformed
-      // Real validation will happen when we execute the query
-      return true
-    }
-  })
-
-  // Remember the query for next time (even if empty)
-  lastJmesQuery = jmesQuery.trim()
+  // Handle JMESPath query selection/creation
+  const jmesQuery = await showQuerySelection(sheet, schema)
 
   const filter = { gte, lte }
-  if (jmesQuery.trim()) {
+  if (jmesQuery && jmesQuery.trim()) {
     filter.query = jmesQuery.trim()
   }
 
-  await showFilteredRowList(sheet, schema, filter, choice, jmesQuery.trim())
+  await showFilteredRowList(sheet, schema, filter, choice, jmesQuery || '')
+}
+
+async function showQuerySelection(sheet, schema) {
+  try {
+    const savedQueries = await sheet.listQueries(schema.schemaId)
+    
+    const choices = []
+    
+    // Add saved queries if any exist
+    if (savedQueries.length > 0) {
+      choices.push({
+        name: chalk.gray('--- Saved Queries ---'),
+        value: 'separator-saved',
+        disabled: ''
+      })
+      
+      savedQueries.forEach(query => {
+        choices.push({
+          name: `💾 ${query.name}`,
+          value: `saved-${query.queryId}`,
+          description: `Query: ${query.JMESPathQuery}`
+        })
+      })
+      
+      choices.push({
+        name: chalk.gray('--- Create New ---'),
+        value: 'separator-new',
+        disabled: ''
+      })
+    }
+    
+    // Add options for creating new queries
+    choices.push(
+      {
+        name: '✏️ Enter Custom Query',
+        value: 'custom',
+        description: 'Enter a new JMESPath query'
+      },
+      {
+        name: '🚫 No Query Filter',
+        value: 'none',
+        description: 'Skip JMESPath filtering'
+      }
+    )
+    
+    if (savedQueries.length > 0) {
+      choices.push({
+        name: '🗑️ Manage Saved Queries',
+        value: 'manage',
+        description: 'Delete or edit saved queries'
+      })
+    }
+
+    const queryChoice = await select({
+      message: 'Select a query filter:',
+      choices
+    })
+
+    if (queryChoice.startsWith('separator-')) {
+      // User accidentally selected separator, re-render menu
+      return showQuerySelection(sheet, schema)
+    }
+
+    if (queryChoice === 'none') {
+      return ''
+    }
+
+    if (queryChoice === 'manage') {
+      return showManageQueries(sheet, schema)
+    }
+
+    if (queryChoice.startsWith('saved-')) {
+      const queryId = queryChoice.replace('saved-', '')
+      const selectedQuery = savedQueries.find(q => q.queryId === queryId)
+      if (selectedQuery) {
+        lastJmesQuery = selectedQuery.JMESPathQuery
+        return selectedQuery.JMESPathQuery
+      }
+    }
+
+    if (queryChoice === 'custom') {
+      console.log(chalk.gray('\nEnter JMESPath query to filter results'))
+      console.log(chalk.gray('Examples: title, status == `open`, priority == `high`'))
+      console.log(chalk.gray('Leave empty to skip filtering\n'))
+      
+      const customQuery = await input({
+        message: 'JMESPath query:',
+        default: lastJmesQuery,
+        validate: (input) => {
+          // Allow empty input
+          if (!input.trim()) return true
+          return true
+        }
+      })
+
+      const queryText = customQuery.trim()
+      lastJmesQuery = queryText
+
+      // Ask if user wants to save this query
+      if (queryText) {
+        const shouldSave = await confirm({
+          message: 'Save this query for reuse?',
+          default: false
+        })
+
+        if (shouldSave) {
+          const queryName = await input({
+            message: 'Enter name for this query:',
+            validate: (input) => {
+              if (!input.trim()) return 'Query name is required'
+              return true
+            }
+          })
+
+          try {
+            await sheet.addQuery(schema.schemaId, queryName.trim(), queryText)
+            console.log(chalk.green(`✅ Query "${queryName.trim()}" saved!`))
+          } catch (error) {
+            console.log(chalk.yellow(`Warning: Could not save query: ${error.message}`))
+          }
+        }
+      }
+
+      return queryText
+    }
+
+    return ''
+  } catch (error) {
+    console.error(chalk.red('Error loading queries:'), error.message)
+    return ''
+  }
+}
+
+async function showManageQueries(sheet, schema) {
+  console.clear()
+  console.log(chalk.blue.bold(`🗑️ Manage Saved Queries - Schema: ${schema.name}\n`))
+
+  try {
+    const savedQueries = await sheet.listQueries(schema.schemaId)
+    
+    if (savedQueries.length === 0) {
+      console.log(chalk.yellow('No saved queries found.'))
+      await input({ message: 'Press Enter to continue...' })
+      return showQuerySelection(sheet, schema)
+    }
+
+    const choices = savedQueries.map(query => ({
+      name: `${query.name} - ${query.JMESPathQuery}`,
+      value: query.queryId,
+      description: 'Delete this query'
+    }))
+
+    choices.push({
+      name: chalk.gray('← Back to Query Selection'),
+      value: 'back'
+    })
+
+    const choice = await select({
+      message: 'Select a query to delete:',
+      choices
+    })
+
+    if (choice === 'back') {
+      return showQuerySelection(sheet, schema)
+    }
+
+    const selectedQuery = savedQueries.find(q => q.queryId === choice)
+    if (selectedQuery) {
+      const confirmDelete = await confirm({
+        message: `Delete query "${selectedQuery.name}"?`,
+        default: false
+      })
+
+      if (confirmDelete) {
+        try {
+          await sheet.deleteQuery(choice)
+          console.log(chalk.green(`✅ Query "${selectedQuery.name}" deleted!`))
+          await input({ message: 'Press Enter to continue...' })
+        } catch (error) {
+          console.error(chalk.red('Error deleting query:'), error.message)
+          await input({ message: 'Press Enter to continue...' })
+        }
+      }
+    }
+
+    return showManageQueries(sheet, schema)
+  } catch (error) {
+    console.error(chalk.red('Error managing queries:'), error.message)
+    await input({ message: 'Press Enter to continue...' })
+    return showQuerySelection(sheet, schema)
+  }
 }
 
 async function showFilteredRowList(sheet, schema, filter, filterType, jmesQuery = '') {
