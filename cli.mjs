@@ -14,6 +14,7 @@ import {makeDirectory} from 'make-dir'
 import { select, input, confirm } from '@inquirer/prompts'
 import fileSelector from 'inquirer-file-selector'
 import chalk from 'chalk'
+import { spawn } from 'child_process'
 import Ajv from 'ajv'
 import addFormats from "ajv-formats"
 import Wakeup from 'protomux-wakeup'
