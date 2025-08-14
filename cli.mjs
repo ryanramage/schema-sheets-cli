@@ -14,18 +14,16 @@ import {makeDirectory} from 'make-dir'
 import { select, input, confirm } from '@inquirer/prompts'
 import fileSelector from 'inquirer-file-selector'
 import chalk from 'chalk'
-import { spawn } from 'child_process'
-import { promisify } from 'util'
-import { exec } from 'child_process'
-import Table from 'cli-table3'
-import toClipboard from 'to-clipboard-android'
 import Ajv from 'ajv'
 import addFormats from "ajv-formats"
 import Wakeup from 'protomux-wakeup'
 import { createLobby } from './lobby.mjs'
 import { WebFormServer } from './web/index.mjs'
+import { copyToClipboardWithFeedback } from './utils/clipboard.mjs'
+import { getDateRanges, formatDateRange } from './utils/date-filters.mjs'
+import { selectJsonFile, readJsonFile, downloadJsonFromUrl } from './utils/file-helpers.mjs'
+import { displayJsonWithFallback, createRowTable, addRowToTable, createRowChoices } from './utils/display.mjs'
 const paths = envPaths('schema-sheets')
-const execAsync = promisify(exec)
 
 
 // Default configuration
@@ -64,7 +62,6 @@ const lobby = createLobby(config.storage)
 let currentSheet = null
 let currentRoomLink = null
 let currentRoomName = null
-let lastUsedDirectory = null
 let lastJmesQuery = ''
 
 async function copyRoomLinkToClipboard() {
@@ -74,16 +71,7 @@ async function copyRoomLinkToClipboard() {
     return showMainMenu(currentSheet)
   }
 
-  try {
-    toClipboard.sync(currentRoomLink)
-    console.log(chalk.green('✓ Room link copied to clipboard'))
-    console.log(chalk.blue(`Room Link: ${currentRoomLink}`))
-  } catch (error) {
-    console.error(chalk.red('Failed to copy to clipboard:'), error.message)
-    console.log(chalk.blue(`Room Link: ${currentRoomLink}`))
-  }
-  
-  await input({ message: 'Press Enter to continue...' })
+  await copyToClipboardWithFeedback(currentRoomLink, 'Room Link')
   return showMainMenu(currentSheet)
 }
 
@@ -469,38 +457,6 @@ async function showRowMenu(sheet, schema) {
   }
 }
 
-function getDateRanges() {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
-  
-  // This week (Monday to Sunday)
-  const dayOfWeek = now.getDay()
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Handle Sunday as 0
-  const thisWeekStart = new Date(today.getTime() + mondayOffset * 24 * 60 * 60 * 1000)
-  const thisWeekEnd = new Date(thisWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000 + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 999)
-  
-  // Last week
-  const lastWeekStart = new Date(thisWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000)
-  const lastWeekEnd = new Date(thisWeekStart.getTime() - 1)
-  
-  // This month
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-  
-  // Last month
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
-  
-  return {
-    today: { gte: today.getTime(), lte: new Date(today.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 999).getTime() },
-    yesterday: { gte: yesterday.getTime(), lte: new Date(yesterday.getTime() + 23 * 60 * 60 * 1000 + 59 * 60 * 1000 + 999).getTime() },
-    thisWeek: { gte: thisWeekStart.getTime(), lte: thisWeekEnd.getTime() },
-    lastWeek: { gte: lastWeekStart.getTime(), lte: lastWeekEnd.getTime() },
-    thisMonth: { gte: thisMonthStart.getTime(), lte: thisMonthEnd.getTime() },
-    lastMonth: { gte: lastMonthStart.getTime(), lte: lastMonthEnd.getTime() }
-  }
-}
 
 async function showFilterRows(sheet, schema) {
   console.clear()
@@ -802,9 +758,7 @@ async function showFilteredRowList(sheet, schema, filter, filterType, jmesQuery 
   console.clear()
   console.log(chalk.blue.bold(`📋 Filtered Rows - Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
   
-  const startDate = new Date(filter.gte).toLocaleDateString()
-  const endDate = new Date(filter.lte).toLocaleDateString()
-  console.log(chalk.gray(`Date Filter: ${filterType === 'custom' ? 'Custom' : filterType} (${startDate} - ${endDate})`))
+  console.log(chalk.gray(`Date Filter: ${formatDateRange(filterType, filter.gte, filter.lte)}`))
   
   if (jmesQuery) {
     console.log(chalk.gray(`JMESPath Query: ${jmesQuery}`))
