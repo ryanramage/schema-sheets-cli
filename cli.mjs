@@ -940,7 +940,7 @@ async function showWebForm(sheet, schema) {
     console.log(chalk.blue('Starting web form server...'))
     const port = await webServer.start()
     
-    const { sessionId, promise } = await webServer.createFormSession(schema.schemaId, schema.jsonSchema)
+    const { sessionId, promise } = await webServer.createFormSession(schema.schemaId, schema.jsonSchema, sheet)
     const url = `http://localhost:${port}/?session=${sessionId}&schema=${schema.schemaId}`
     
     console.log(chalk.green(`✅ Web form ready at: ${url}`))

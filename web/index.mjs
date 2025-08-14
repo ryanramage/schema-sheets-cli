@@ -69,6 +69,9 @@ export class WebFormServer {
       } else if (pathname.startsWith('/api/schema/')) {
         const schemaId = pathname.split('/')[3]
         await this.handleSchemaRequest(res, schemaId, query.session)
+      } else if (pathname.startsWith('/api/uischema/')) {
+        const schemaId = pathname.split('/')[3]
+        await this.handleUISchemaRequest(res, schemaId, query.session)
       } else if (pathname === '/api/submit') {
         await this.handleSubmit(req, res)
       } else if (pathname === '/api/close') {
@@ -112,6 +115,45 @@ export class WebFormServer {
 
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(sessionData.schema))
+  }
+
+  async handleUISchemaRequest(res, schemaId, sessionId) {
+    const sessionData = this.sessions.get(sessionId)
+    if (!sessionData) {
+      res.writeHead(404)
+      res.end(JSON.stringify({ error: 'Session not found' }))
+      return
+    }
+
+    if (sessionData.schemaId !== schemaId) {
+      res.writeHead(404)
+      res.end(JSON.stringify({ error: 'Schema not found for session' }))
+      return
+    }
+
+    if (!sessionData.sheet) {
+      res.writeHead(404)
+      res.end(JSON.stringify({ error: 'No sheet available for UI schema lookup' }))
+      return
+    }
+
+    try {
+      const uiSchemas = await sessionData.sheet.listUISchemas(schemaId)
+      if (uiSchemas.length === 0) {
+        res.writeHead(404)
+        res.end(JSON.stringify({ error: 'No UI schema found' }))
+        return
+      }
+
+      // Return the first UI schema
+      const firstUISchema = uiSchemas[0]
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(firstUISchema.uiSchema))
+    } catch (error) {
+      console.error('Error fetching UI schema:', error)
+      res.writeHead(500)
+      res.end(JSON.stringify({ error: 'Failed to fetch UI schema' }))
+    }
   }
 
   async handleSubmit(req, res) {
@@ -173,12 +215,13 @@ export class WebFormServer {
   }
 
   // Method to create a session and wait for form completion
-  async createFormSession(schemaId, schema) {
+  async createFormSession(schemaId, schema, sheet = null) {
     const sessionId = crypto.randomUUID()
     
     this.sessions.set(sessionId, {
       schemaId,
       schema,
+      sheet,
       createdAt: Date.now()
     })
 
