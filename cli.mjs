@@ -440,6 +440,11 @@ async function showRowMenu(sheet, schema) {
         description: 'Add a new row from JSON file'
       },
       {
+        name: '🎨 Add/Set UI Schema',
+        value: 'ui-schema',
+        description: 'Add or set the UI layout'
+      },
+      {
         name: chalk.gray('← Back to Main Menu'),
         value: 'back'
       }
@@ -455,6 +460,9 @@ async function showRowMenu(sheet, schema) {
       break
     case 'add-row':
       await showAddRow(sheet, schema)
+      break
+    case 'ui-schema':
+      await showUISchemaMenu(sheet, schema)
       break
     case 'back':
       return showMainMenu(sheet)
@@ -1137,6 +1145,368 @@ async function showRowDetail(sheet, schema, row, returnTo = 'list') {
     return showFilterRows(sheet, schema)
   } else {
     return showRowList(sheet, schema)
+  }
+}
+
+async function showUISchemaMenu(sheet, schema) {
+  console.clear()
+  console.log(chalk.blue.bold(`🎨 UI Schema Management - Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+
+  try {
+    const uiSchemas = await sheet.listUISchemas(schema.schemaId)
+    
+    const choices = []
+    
+    if (uiSchemas.length > 0) {
+      choices.push({
+        name: chalk.gray('--- Existing UI Schemas ---'),
+        value: 'separator-existing',
+        disabled: ''
+      })
+      
+      uiSchemas.forEach(uiSchema => {
+        choices.push({
+          name: `📄 ${uiSchema.name}`,
+          value: `existing-${uiSchema.uischemaId}`,
+          description: 'View, update, or delete this UI schema'
+        })
+      })
+      
+      choices.push({
+        name: chalk.gray('--- Actions ---'),
+        value: 'separator-actions',
+        disabled: ''
+      })
+    }
+    
+    choices.push(
+      {
+        name: '➕ Add New UI Schema',
+        value: 'add-new',
+        description: 'Create a new UI schema from file or URL'
+      },
+      {
+        name: chalk.gray('← Back to Schema Menu'),
+        value: 'back'
+      }
+    )
+
+    const choice = await select({
+      message: 'Select an option:',
+      choices
+    })
+
+    if (choice.startsWith('separator-')) {
+      return showUISchemaMenu(sheet, schema)
+    }
+
+    if (choice === 'back') {
+      return showRowMenu(sheet, schema)
+    }
+
+    if (choice === 'add-new') {
+      return showAddUISchema(sheet, schema)
+    }
+
+    if (choice.startsWith('existing-')) {
+      const uischemaId = choice.replace('existing-', '')
+      const selectedUISchema = uiSchemas.find(ui => ui.uischemaId === uischemaId)
+      return showUISchemaDetail(sheet, schema, selectedUISchema)
+    }
+
+  } catch (error) {
+    console.error(chalk.red('Error loading UI schemas:'), error.message)
+    await input({ message: 'Press Enter to continue...' })
+    return showRowMenu(sheet, schema)
+  }
+}
+
+async function showAddUISchema(sheet, schema) {
+  console.clear()
+  console.log(chalk.blue.bold(`➕ Add UI Schema - Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+
+  const method = await select({
+    message: 'How would you like to add the UI schema?',
+    choices: [
+      {
+        name: '📄 Select JSON File',
+        value: 'file',
+        description: 'Choose a JSON UI schema file from your computer'
+      },
+      {
+        name: '🌐 Enter URL',
+        value: 'url',
+        description: 'Download UI schema from a URL'
+      },
+      {
+        name: chalk.gray('← Back to UI Schema Menu'),
+        value: 'back'
+      }
+    ]
+  })
+
+  if (method === 'back') {
+    return showUISchemaMenu(sheet, schema)
+  }
+
+  try {
+    const name = await input({
+      message: 'Enter UI schema name:',
+      validate: (input) => {
+        if (!input.trim()) return 'UI schema name is required'
+        return true
+      }
+    })
+
+    let uiSchemaContent
+
+    if (method === 'file') {
+      const filePath = await fileSelector({
+        message: 'Select UI schema JSON file:',
+        type: 'file',
+        filter: item => item.isDirectory || item.name.endsWith('.json'),
+        ...(lastUsedDirectory && { basePath: lastUsedDirectory })
+      })
+
+      lastUsedDirectory = dirname(filePath)
+      uiSchemaContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    } else if (method === 'url') {
+      const url = await input({
+        message: 'Enter UI schema URL:',
+        validate: (input) => {
+          if (!input.trim()) return 'URL is required'
+          try {
+            new URL(input)
+            return true
+          } catch {
+            return 'Invalid URL format'
+          }
+        }
+      })
+
+      console.log(chalk.gray('Downloading UI schema...'))
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`Failed to download UI schema: ${response.status} ${response.statusText}`)
+      }
+      uiSchemaContent = await response.json()
+    }
+
+    // Show preview
+    console.log(chalk.gray('\nUI Schema Preview:'))
+    console.log(JSON.stringify(uiSchemaContent, null, 2))
+    
+    const confirmAdd = await confirm({
+      message: 'Add this UI schema?',
+      default: true
+    })
+
+    if (!confirmAdd) {
+      console.log(chalk.yellow('UI schema addition cancelled'))
+      await input({ message: 'Press Enter to continue...' })
+      return showUISchemaMenu(sheet, schema)
+    }
+
+    const uischemaId = await sheet.addUISchema(schema.schemaId, name, uiSchemaContent)
+    
+    console.log(chalk.green(`✅ UI Schema "${name}" added successfully with ID: ${uischemaId}`))
+    await input({ message: 'Press Enter to continue...' })
+    
+    return showUISchemaMenu(sheet, schema)
+  } catch (error) {
+    console.error(chalk.red('Error adding UI schema:'), error.message)
+    await input({ message: 'Press Enter to continue...' })
+    return showUISchemaMenu(sheet, schema)
+  }
+}
+
+async function showUISchemaDetail(sheet, schema, uiSchema) {
+  console.clear()
+  console.log(chalk.blue.bold(`📄 UI Schema Detail - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.gray(`Schema: ${schema.name}`))
+  console.log(chalk.gray(`UI Schema: ${uiSchema.name}`))
+  console.log(chalk.gray(`UI Schema ID: ${uiSchema.uischemaId}\n`))
+
+  const choice = await select({
+    message: 'What would you like to do?',
+    choices: [
+      {
+        name: '👁️ View UI Schema JSON',
+        value: 'view',
+        description: 'Display the full UI schema JSON'
+      },
+      {
+        name: '✏️ Update UI Schema',
+        value: 'update',
+        description: 'Replace with a new UI schema'
+      },
+      {
+        name: '🗑️ Delete UI Schema',
+        value: 'delete',
+        description: 'Remove this UI schema'
+      },
+      {
+        name: chalk.gray('← Back to UI Schema Menu'),
+        value: 'back'
+      }
+    ]
+  })
+
+  switch (choice) {
+    case 'view':
+      await showUISchemaJSON(sheet, schema, uiSchema)
+      break
+    case 'update':
+      await showUpdateUISchema(sheet, schema, uiSchema)
+      break
+    case 'delete':
+      await showDeleteUISchema(sheet, schema, uiSchema)
+      break
+    case 'back':
+      return showUISchemaMenu(sheet, schema)
+  }
+}
+
+async function showUISchemaJSON(sheet, schema, uiSchema) {
+  console.clear()
+  console.log(chalk.blue.bold(`👁️ UI Schema JSON - ${uiSchema.name}\n`))
+  
+  try {
+    // Try to use fx if available
+    await execAsync('which fx')
+    await viewJsonWithFx(uiSchema.uiSchema)
+  } catch (error) {
+    // fx not available, fallback to simple display
+    console.log(chalk.yellow('fx not found, showing plain JSON (install fx for better viewing)'))
+    console.log(chalk.white('UI Schema JSON:'))
+    console.log(JSON.stringify(uiSchema.uiSchema, null, 2))
+    
+    await input({ message: '\nPress Enter to go back...' })
+  }
+  
+  return showUISchemaDetail(sheet, schema, uiSchema)
+}
+
+async function showUpdateUISchema(sheet, schema, uiSchema) {
+  console.clear()
+  console.log(chalk.blue.bold(`✏️ Update UI Schema - ${uiSchema.name}\n`))
+
+  const method = await select({
+    message: 'How would you like to update the UI schema?',
+    choices: [
+      {
+        name: '📄 Select JSON File',
+        value: 'file',
+        description: 'Choose a new JSON UI schema file'
+      },
+      {
+        name: '🌐 Enter URL',
+        value: 'url',
+        description: 'Download new UI schema from a URL'
+      },
+      {
+        name: chalk.gray('← Back to UI Schema Detail'),
+        value: 'back'
+      }
+    ]
+  })
+
+  if (method === 'back') {
+    return showUISchemaDetail(sheet, schema, uiSchema)
+  }
+
+  try {
+    let newUISchemaContent
+
+    if (method === 'file') {
+      const filePath = await fileSelector({
+        message: 'Select new UI schema JSON file:',
+        type: 'file',
+        filter: item => item.isDirectory || item.name.endsWith('.json'),
+        ...(lastUsedDirectory && { basePath: lastUsedDirectory })
+      })
+
+      lastUsedDirectory = dirname(filePath)
+      newUISchemaContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    } else if (method === 'url') {
+      const url = await input({
+        message: 'Enter UI schema URL:',
+        validate: (input) => {
+          if (!input.trim()) return 'URL is required'
+          try {
+            new URL(input)
+            return true
+          } catch {
+            return 'Invalid URL format'
+          }
+        }
+      })
+
+      console.log(chalk.gray('Downloading UI schema...'))
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error(`Failed to download UI schema: ${response.status} ${response.statusText}`)
+      }
+      newUISchemaContent = await response.json()
+    }
+
+    // Show preview
+    console.log(chalk.gray('\nNew UI Schema Preview:'))
+    console.log(JSON.stringify(newUISchemaContent, null, 2))
+    
+    const confirmUpdate = await confirm({
+      message: 'Update the UI schema with this content?',
+      default: true
+    })
+
+    if (!confirmUpdate) {
+      console.log(chalk.yellow('UI schema update cancelled'))
+      await input({ message: 'Press Enter to continue...' })
+      return showUISchemaDetail(sheet, schema, uiSchema)
+    }
+
+    await sheet.updateUISchema(uiSchema.uischemaId, schema.schemaId, uiSchema.name, newUISchemaContent)
+    
+    console.log(chalk.green(`✅ UI Schema "${uiSchema.name}" updated successfully`))
+    await input({ message: 'Press Enter to continue...' })
+    
+    return showUISchemaMenu(sheet, schema)
+  } catch (error) {
+    console.error(chalk.red('Error updating UI schema:'), error.message)
+    await input({ message: 'Press Enter to continue...' })
+    return showUISchemaDetail(sheet, schema, uiSchema)
+  }
+}
+
+async function showDeleteUISchema(sheet, schema, uiSchema) {
+  console.clear()
+  console.log(chalk.blue.bold(`🗑️ Delete UI Schema - ${uiSchema.name}\n`))
+  console.log(chalk.yellow('⚠️ This action cannot be undone!'))
+  console.log(chalk.gray(`UI Schema: ${uiSchema.name}`))
+  console.log(chalk.gray(`UI Schema ID: ${uiSchema.uischemaId}\n`))
+
+  const confirmDelete = await confirm({
+    message: 'Are you sure you want to delete this UI schema?',
+    default: false
+  })
+
+  if (!confirmDelete) {
+    console.log(chalk.yellow('Deletion cancelled'))
+    await input({ message: 'Press Enter to continue...' })
+    return showUISchemaDetail(sheet, schema, uiSchema)
+  }
+
+  try {
+    await sheet.deleteUISchema(uiSchema.uischemaId)
+    
+    console.log(chalk.green(`✅ UI Schema "${uiSchema.name}" deleted successfully`))
+    await input({ message: 'Press Enter to continue...' })
+    
+    return showUISchemaMenu(sheet, schema)
+  } catch (error) {
+    console.error(chalk.red('Error deleting UI schema:'), error.message)
+    await input({ message: 'Press Enter to continue...' })
+    return showUISchemaDetail(sheet, schema, uiSchema)
   }
 }
 
