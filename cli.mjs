@@ -355,16 +355,8 @@ async function showAddSchema(sheet) {
     let schemaContent
 
     if (method === 'file') {
-      const filePath = await fileSelector({
-        message: 'Select schema JSON file:',
-        type: 'file',
-        filter: item => item.isDirectory || item.name.endsWith('.json'),
-        ...(lastUsedDirectory && { basePath: lastUsedDirectory })
-      })
-
-      // Remember the directory for next time
-      lastUsedDirectory = dirname(filePath)
-      schemaContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+      const filePath = await selectJsonFile('Select schema JSON file:')
+      schemaContent = readJsonFile(filePath)
     } else if (method === 'url') {
       const url = await input({
         message: 'Enter schema URL:',
@@ -380,11 +372,7 @@ async function showAddSchema(sheet) {
       })
 
       console.log(chalk.gray('Downloading schema...'))
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`Failed to download schema: ${response.status} ${response.statusText}`)
-      }
-      schemaContent = await response.json()
+      schemaContent = await downloadJsonFromUrl(url)
     } else if (method === 'example') {
       schemaContent = issueSchema
       console.log(chalk.gray('\nUsing example issue schema:'))
@@ -775,31 +763,12 @@ async function showFilteredRowList(sheet, schema, filter, filterType, jmesQuery 
     }
 
     // Create table with row snippets
-    const table = new Table({
-      head: ['Row ID', 'JSON Snippet'],
-      colWidths: [20, 60]
-    })
-
-    rows.forEach(row => {
-      const jsonString = JSON.stringify(row.json || {})
-      const snippet = jsonString.substring(0, 55)
-      const displaySnippet = snippet.length === 55 ? snippet + '...' : snippet
-      const rowIdDisplay = (row.rowId || '').substring(0, 16) + '...'
-      table.push([rowIdDisplay, displaySnippet])
-    })
+    const table = createRowTable()
+    rows.forEach(row => addRowToTable(table, row))
 
     console.log(table.toString())
 
-    const choices = rows.map(row => {
-      const jsonString = JSON.stringify(row.json || {})
-      const snippet = jsonString.substring(0, 40)
-      const rowIdDisplay = (row.rowId || '').substring(0, 16)
-      return {
-        name: `${rowIdDisplay}... - ${snippet}...`,
-        value: row.rowId,
-        description: 'View full JSON'
-      }
-    })
+    const choices = createRowChoices(rows)
 
     choices.push({
       name: chalk.gray('← Back to Filter Menu'),
@@ -838,31 +807,12 @@ async function showRowList(sheet, schema) {
     }
 
     // Create table with row snippets
-    const table = new Table({
-      head: ['Row ID', 'JSON Snippet'],
-      colWidths: [20, 60]
-    })
-
-    rows.forEach(row => {
-      const jsonString = JSON.stringify(row.json || {})
-      const snippet = jsonString.substring(0, 55)
-      const displaySnippet = snippet.length === 55 ? snippet + '...' : snippet
-      const rowIdDisplay = (row.rowId || '').substring(0, 16) + '...'
-      table.push([rowIdDisplay, displaySnippet])
-    })
+    const table = createRowTable()
+    rows.forEach(row => addRowToTable(table, row))
 
     console.log(table.toString())
 
-    const choices = rows.map(row => {
-      const jsonString = JSON.stringify(row.json || {})
-      const snippet = jsonString.substring(0, 40)
-      const rowIdDisplay = (row.rowId || '').substring(0, 16)
-      return {
-        name: `${rowIdDisplay}... - ${snippet}...`,
-        value: row.rowId,
-        description: 'View full JSON'
-      }
-    })
+    const choices = createRowChoices(rows)
 
     choices.push({
       name: chalk.gray('← Back to Row Menu'),
@@ -969,17 +919,8 @@ async function showAddRow(sheet, schema) {
 
   // File method (existing code)
   try {
-    const filePath = await fileSelector({
-      message: 'Select JSON file:',
-      type: 'file',
-      filter: item => item.isDirectory || item.name.endsWith('.json'),
-      ...(lastUsedDirectory && { basePath: lastUsedDirectory })
-    })
-
-    // Remember the directory for next time
-    lastUsedDirectory = dirname(filePath)
-
-    const jsonContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+    const filePath = await selectJsonFile('Select JSON file:')
+    const jsonContent = readJsonFile(filePath)
     
     // Validate JSON against schema using AJV
     const ajv = new Ajv({ allErrors: true })
@@ -1032,45 +973,6 @@ async function showAddRow(sheet, schema) {
   }
 }
 
-async function viewJsonWithFx(jsonData) {
-  return new Promise((resolve, reject) => {
-    // Save current terminal state
-    const originalRawMode = process.stdin.isRaw
-    
-    // Exit raw mode if we're in it (inquirer uses raw mode)
-    if (process.stdin.setRawMode) {
-      process.stdin.setRawMode(false)
-    }
-    
-    const fx = spawn('fx', [], {
-      stdio: ['pipe', 'inherit', 'inherit'],
-      env: {
-        ...process.env,
-        FX_COLLAPSED: 'true'
-      }
-    })
-    
-    // Send JSON to fx via stdin
-    fx.stdin.write(JSON.stringify(jsonData, null, 2))
-    fx.stdin.end()
-    
-    fx.on('close', (code) => {
-      // Restore original terminal state
-      if (process.stdin.setRawMode && originalRawMode) {
-        process.stdin.setRawMode(true)
-      }
-      resolve()
-    })
-    
-    fx.on('error', (error) => {
-      // Restore original terminal state on error
-      if (process.stdin.setRawMode && originalRawMode) {
-        process.stdin.setRawMode(true)
-      }
-      reject(error)
-    })
-  })
-}
 
 async function showRowDetail(sheet, schema, row, returnTo = 'list') {
   console.clear()
@@ -1078,21 +980,7 @@ async function showRowDetail(sheet, schema, row, returnTo = 'list') {
   console.log(chalk.gray(`Schema: ${schema.name}`))
   console.log(chalk.gray(`Row ID: ${row.rowId}\n`))
   
-  // Try to use fx if available
-  try {
-    // Check if fx is available
-    await execAsync('which fx')
-    
-    // Use fx for interactive JSON viewing
-    await viewJsonWithFx(row.json)
-  } catch (error) {
-    // fx not available, fallback to simple display
-    console.log(chalk.yellow('fx not found, showing plain JSON (install fx for better viewing)'))
-    console.log(chalk.white('Full JSON:'))
-    console.log(JSON.stringify(row.json, null, 2))
-    
-    await input({ message: '\nPress Enter to go back...' })
-  }
+  await displayJsonWithFallback(row.json, 'Full JSON')
   
   // Return to the appropriate list view
   if (returnTo === 'filter') {
@@ -1215,15 +1103,8 @@ async function showAddUISchema(sheet, schema) {
     let uiSchemaContent
 
     if (method === 'file') {
-      const filePath = await fileSelector({
-        message: 'Select UI schema JSON file:',
-        type: 'file',
-        filter: item => item.isDirectory || item.name.endsWith('.json'),
-        ...(lastUsedDirectory && { basePath: lastUsedDirectory })
-      })
-
-      lastUsedDirectory = dirname(filePath)
-      uiSchemaContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+      const filePath = await selectJsonFile('Select UI schema JSON file:')
+      uiSchemaContent = readJsonFile(filePath)
     } else if (method === 'url') {
       const url = await input({
         message: 'Enter UI schema URL:',
@@ -1239,11 +1120,7 @@ async function showAddUISchema(sheet, schema) {
       })
 
       console.log(chalk.gray('Downloading UI schema...'))
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`Failed to download UI schema: ${response.status} ${response.statusText}`)
-      }
-      uiSchemaContent = await response.json()
+      uiSchemaContent = await downloadJsonFromUrl(url)
     }
 
     // Show preview
@@ -1325,18 +1202,7 @@ async function showUISchemaJSON(sheet, schema, uiSchema) {
   console.clear()
   console.log(chalk.blue.bold(`👁️ UI Schema JSON - ${uiSchema.name}\n`))
   
-  try {
-    // Try to use fx if available
-    await execAsync('which fx')
-    await viewJsonWithFx(uiSchema.uiSchema)
-  } catch (error) {
-    // fx not available, fallback to simple display
-    console.log(chalk.yellow('fx not found, showing plain JSON (install fx for better viewing)'))
-    console.log(chalk.white('UI Schema JSON:'))
-    console.log(JSON.stringify(uiSchema.uiSchema, null, 2))
-    
-    await input({ message: '\nPress Enter to go back...' })
-  }
+  await displayJsonWithFallback(uiSchema.uiSchema, 'UI Schema JSON')
   
   return showUISchemaDetail(sheet, schema, uiSchema)
 }
@@ -1373,15 +1239,8 @@ async function showUpdateUISchema(sheet, schema, uiSchema) {
     let newUISchemaContent
 
     if (method === 'file') {
-      const filePath = await fileSelector({
-        message: 'Select new UI schema JSON file:',
-        type: 'file',
-        filter: item => item.isDirectory || item.name.endsWith('.json'),
-        ...(lastUsedDirectory && { basePath: lastUsedDirectory })
-      })
-
-      lastUsedDirectory = dirname(filePath)
-      newUISchemaContent = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+      const filePath = await selectJsonFile('Select new UI schema JSON file:')
+      newUISchemaContent = readJsonFile(filePath)
     } else if (method === 'url') {
       const url = await input({
         message: 'Enter UI schema URL:',
@@ -1397,11 +1256,7 @@ async function showUpdateUISchema(sheet, schema, uiSchema) {
       })
 
       console.log(chalk.gray('Downloading UI schema...'))
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`Failed to download UI schema: ${response.status} ${response.statusText}`)
-      }
-      newUISchemaContent = await response.json()
+      newUISchemaContent = await downloadJsonFromUrl(url)
     }
 
     // Show preview
