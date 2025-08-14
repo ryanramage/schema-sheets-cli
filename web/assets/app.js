@@ -3,6 +3,7 @@ const Form = JSONSchemaForm.default;
 
 function App() {
     const [schema, setSchema] = useState(null);
+    const [uiSchema, setUiSchema] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
@@ -25,22 +26,31 @@ function App() {
         setSessionId(session);
         setSchemaId(schema);
 
-        // Fetch schema
-        fetch(`/api/schema/${schema}?session=${session}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to load schema');
-                }
-                return response.json();
-            })
-            .then(schemaData => {
-                setSchema(schemaData);
-                setLoading(false);
-            })
-            .catch(err => {
-                setError(err.message);
-                setLoading(false);
-            });
+        // Fetch both schema and UI schema
+        Promise.all([
+            fetch(`/api/schema/${schema}?session=${session}`),
+            fetch(`/api/uischema/${schema}?session=${session}`)
+        ])
+        .then(async ([schemaResponse, uiSchemaResponse]) => {
+            if (!schemaResponse.ok) {
+                throw new Error('Failed to load schema');
+            }
+            
+            const schemaData = await schemaResponse.json();
+            setSchema(schemaData);
+            
+            // UI schema is optional - don't throw error if 404
+            if (uiSchemaResponse.ok) {
+                const uiSchemaData = await uiSchemaResponse.json();
+                setUiSchema(uiSchemaData);
+            }
+            
+            setLoading(false);
+        })
+        .catch(err => {
+            setError(err.message);
+            setLoading(false);
+        });
     }, []);
 
     const handleSubmit = async ({ formData }) => {
@@ -111,6 +121,7 @@ function App() {
         schema && React.createElement('div', null,
             React.createElement(Form, {
                 schema: schema,
+                uiSchema: uiSchema,
                 onSubmit: handleSubmit,
                 disabled: submitting
             }),
