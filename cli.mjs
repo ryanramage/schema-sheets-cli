@@ -27,6 +27,10 @@ import { DefaultConfig, paths } from './config/default-config.mjs'
 import { issueSchema, issue } from './examples/issue-schema.mjs'
 import { RoomManager } from './rooms/room-manager.mjs'
 import { SheetOperations } from './sheets/sheet-operations.mjs'
+import { MainMenu } from './menus/main-menu.mjs'
+import { RoomLobbyMenu } from './menus/room-lobby-menu.mjs'
+import { SchemaMenu } from './menus/schema-menu.mjs'
+import { RowMenu } from './menus/row-menu.mjs'
 
 
 // Try to load config from file
@@ -58,6 +62,12 @@ const lobby = createLobby(config.storage)
 // Initialize managers
 const roomManager = new RoomManager(lobby, swarm, store, blind, wakeup)
 const sheetOps = new SheetOperations()
+
+// Initialize menus
+const mainMenu = new MainMenu(roomManager, sheetOps)
+const roomLobbyMenu = new RoomLobbyMenu(roomManager, sheetOps, lobby)
+const schemaMenu = new SchemaMenu(roomManager, sheetOps)
+const rowMenu = new RowMenu(roomManager, sheetOps)
 
 async function copyRoomLinkToClipboard() {
   const currentRoomLink = roomManager.getCurrentRoomLink()
@@ -96,166 +106,41 @@ process.once('SIGINT', async function () {
 
 
 async function showMainMenu(sheet) {
-  console.clear()
-  console.log(chalk.blue.bold(`📊 Room: ${roomManager.getCurrentRoomName() || 'Unknown'}`))
-  console.log(chalk.gray('Navigate with arrow keys, select with Enter\n'))
+  const { choice, schemas } = await mainMenu.show(sheet)
 
-  try {
-    const schemas = await sheet.listSchemas()
-    
-    const choices = []
-    
-    // Add schemas to the menu
-    if (schemas.length > 0) {
-      schemas.forEach(schema => {
-        choices.push({
-          name: `📋 ${schema.name} (ID: ${schema.schemaId})`,
-          value: `schema-${schema.schemaId}`,
-          description: `Manage rows in schema: ${schema.name}`
-        })
-      })
-      
-      // Add separator if we have schemas
-      choices.push({
-        name: chalk.gray('--- Actions ---'),
-        value: 'separator',
-        disabled: ''
-      })
-    } else {
-      console.log(chalk.yellow('No schemas found. Add one first!\n'))
+  if (choice.startsWith('schema-')) {
+    const schemaId = choice.replace('schema-', '')
+    const selectedSchema = schemas.find(s => s.schemaId === schemaId)
+    await showRowMenu(sheet, selectedSchema)
+  } else {
+    switch (choice) {
+      case 'add-schema':
+        await showAddSchema(sheet)
+        break
+      case 'change-room-name':
+        await mainMenu.showChangeRoomName(sheet)
+        break
+      case 'copy-room-link':
+        await copyRoomLinkToClipboard()
+        break
+      case 'lobby':
+        await roomManager.closeCurrentSheet()
+        sheetOps.resetLastJmesQuery()
+        await showRoomLobby()
+        break
     }
-
-    // Add action items
-    choices.push(
-      {
-        name: '➕ Add Schema',
-        value: 'add-schema', 
-        description: 'Create a new schema from file'
-      },
-      {
-        name: '🏷️  Change Room Name',
-        value: 'change-room-name',
-        description: 'Change the local name for this room'
-      },
-      {
-        name: '📋 Copy Room Link',
-        value: 'copy-room-link',
-        description: 'Copy room invite link to clipboard'
-      },
-      {
-        name: '🏠 Back to Room Lobby',
-        value: 'lobby',
-        description: 'Return to room selection'
-      }
-    )
-
-    const choice = await select({
-      message: 'Select a schema to manage or choose an action:',
-      choices
-    })
-
-    if (choice === 'separator') {
-      // User accidentally selected separator, re-render menu
-      return showMainMenu(sheet)
-    }
-
-    if (choice.startsWith('schema-')) {
-      const schemaId = choice.replace('schema-', '')
-      const selectedSchema = schemas.find(s => s.schemaId === schemaId)
-      await showRowMenu(sheet, selectedSchema)
-    } else {
-      switch (choice) {
-        case 'add-schema':
-          await showAddSchema(sheet)
-          break
-        case 'change-room-name':
-          await showChangeRoomName(sheet)
-          break
-        case 'copy-room-link':
-          await copyRoomLinkToClipboard()
-          break
-        case 'lobby':
-          await roomManager.closeCurrentSheet()
-          sheetOps.resetLastJmesQuery()
-          await showRoomLobby()
-          break
-      }
-    }
-  } catch (error) {
-    console.error(chalk.red('Error loading schemas:'), error.message)
-    await input({ message: 'Press Enter to continue...' })
-    return showMainMenu(sheet)
   }
 }
 
-
-async function showChangeRoomName(sheet) {
-  console.clear()
-  console.log(chalk.blue.bold(`✏️ Change Room Name - Current: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-
-  try {
-    const newPetName = await input({
-      message: 'Enter new room name:',
-      default: roomManager.getCurrentRoomName() || '',
-      validate: (input) => {
-        if (!input.trim()) return 'Room name is required'
-        return true
-      }
-    })
-
-    await roomManager.changeRoomName(newPetName)
-    
-    await input({ message: 'Press Enter to continue...' })
-    return showMainMenu(sheet)
-  } catch (error) {
-    console.error(chalk.red('Error changing room name:'), error.message)
-    await input({ message: 'Press Enter to continue...' })
-    return showMainMenu(sheet)
-  }
-}
 
 async function showAddSchema(sheet) {
-  console.clear()
-  console.log(chalk.blue.bold(`➕ Add New Schema - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-
-  const method = await select({
-    message: 'How would you like to add the schema?',
-    choices: [
-      {
-        name: '📄 Select JSON File',
-        value: 'file',
-        description: 'Choose a JSON schema file from your computer'
-      },
-      {
-        name: '🌐 Enter URL',
-        value: 'url',
-        description: 'Download schema from a URL'
-      },
-      {
-        name: '📋 Use Example Issue Schema',
-        value: 'example',
-        description: 'Use a pre-built issue tracking schema'
-      },
-      {
-        name: chalk.gray('← Back to Main Menu'),
-        value: 'back'
-      }
-    ]
-  })
+  const { method, name } = await schemaMenu.showAddSchema(sheet)
 
   if (method === 'back') {
     return showMainMenu(sheet)
   }
 
   try {
-    const name = await input({
-      message: 'Enter schema name:',
-      validate: (input) => {
-        if (!input.trim()) return 'Schema name is required'
-        return true
-      }
-    })
-
     await sheetOps.addSchema(sheet, method, name)
     await input({ message: 'Press Enter to continue...' })
       
@@ -268,38 +153,7 @@ async function showAddSchema(sheet) {
 }
 
 async function showRowMenu(sheet, schema) {
-  console.clear()
-  console.log(chalk.blue.bold(`📊 Managing Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-
-  const choice = await select({
-    message: 'What would you like to do?',
-    choices: [
-      {
-        name: '📋 List Rows',
-        value: 'list-rows',
-        description: 'View all rows in this schema'
-      },
-      {
-        name: '🔍 Filter Rows',
-        value: 'filter-rows',
-        description: 'Filter rows by date range'
-      },
-      {
-        name: '➕ Add Row',
-        value: 'add-row',
-        description: 'Add a new row from JSON file'
-      },
-      {
-        name: '🎨 Add/Set UI Schema',
-        value: 'ui-schema',
-        description: 'Add or set the UI layout'
-      },
-      {
-        name: chalk.gray('← Back to Main Menu'),
-        value: 'back'
-      }
-    ]
-  })
+  const choice = await rowMenu.show(sheet, schema)
 
   switch (choice) {
     case 'list-rows':
@@ -740,28 +594,7 @@ async function showWebForm(sheet, schema) {
 }
 
 async function showAddRow(sheet, schema) {
-  console.clear()
-  console.log(chalk.blue.bold(`➕ Add Row to Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-
-  const method = await select({
-    message: 'How would you like to add the row?',
-    choices: [
-      {
-        name: '📄 Select JSON File',
-        value: 'file',
-        description: 'Choose a JSON file from your computer'
-      },
-      {
-        name: '🌐 Web Form',
-        value: 'web',
-        description: 'Fill out a form in your browser'
-      },
-      {
-        name: chalk.gray('← Back to Row Menu'),
-        value: 'back'
-      }
-    ]
-  })
+  const method = await rowMenu.showAddRow(sheet, schema)
 
   if (method === 'back') {
     return showRowMenu(sheet, schema)
@@ -1051,59 +884,7 @@ async function showDeleteUISchema(sheet, schema, uiSchema) {
 }
 
 async function showRoomLobby() {
-  console.clear()
-  console.log(chalk.blue.bold('🏠 Room Lobby'))
-  console.log(chalk.gray('Manage your rooms and join schema sheets\n'))
-
-  const rooms = await lobby.listRooms()
-  
-  const choices = [
-    {
-      name: '🆕 Create New Room',
-      value: 'create-room',
-      description: 'Create a new room and get a shareable link'
-    },
-    {
-      name: '🔗 Join Room by Link',
-      value: 'join-room',
-      description: 'Join an existing room using a room link'
-    }
-  ]
-
-  // Add existing rooms to the menu
-  if (rooms.length > 0) {
-    choices.push({
-      name: chalk.gray('--- Known Rooms ---'),
-      value: 'separator',
-      disabled: ''
-    })
-    
-    rooms.forEach(room => {
-      const createdDate = new Date(room.createdAt).toLocaleDateString()
-      const isCreator = room.isCreator ? '👑' : '👤'
-      choices.push({
-        name: `${isCreator} ${room.petName} (${createdDate})`,
-        value: `room-${room.key}`,
-        description: `Join as ${room.username}`
-      })
-    })
-  }
-
-  choices.push({
-    name: '🚪 Exit',
-    value: 'exit',
-    description: 'Close the application'
-  })
-
-  const choice = await select({
-    message: 'What would you like to do?',
-    choices
-  })
-
-  if (choice === 'separator') {
-    // User accidentally selected separator, re-render menu
-    return showRoomLobby()
-  }
+  const { choice, rooms } = await roomLobbyMenu.show()
 
   switch (choice) {
     case 'create-room':
@@ -1129,26 +910,14 @@ async function showRoomLobby() {
 }
 
 async function showCreateRoom() {
-  console.clear()
-  console.log(chalk.blue.bold('🆕 Create New Room\n'))
+  const result = await roomLobbyMenu.showCreateRoom()
+  
+  if (!result) {
+    return showRoomLobby()
+  }
 
   try {
-    const petName = await input({
-      message: 'Enter room name:',
-      validate: (input) => {
-        if (!input.trim()) return 'Room name is required'
-        return true
-      }
-    })
-
-    const username = await input({
-      message: 'Enter your username:',
-      validate: (input) => {
-        if (!input.trim()) return 'Username is required'
-        return true
-      }
-    })
-
+    const { petName, username } = result
     const { sheet } = await roomManager.createNewRoom(petName, username)
     const member = await sheet.join(username)
     
@@ -1165,40 +934,15 @@ async function showCreateRoom() {
 }
 
 async function showJoinRoom() {
-  console.clear()
-  console.log(chalk.blue.bold('🔗 Join Room by Link\n'))
+  const result = await roomLobbyMenu.showJoinRoom()
+  
+  if (!result) {
+    return showRoomLobby()
+  }
 
   try {
-    const roomLink = await input({
-      message: 'Enter room link:',
-      validate: (input) => {
-        if (!input.trim()) return 'Room link is required'
-        try {
-          z32.decode(input)
-          return true
-        } catch {
-          return 'Invalid room link format'
-        }
-      }
-    })
-
-    const username = await input({
-      message: 'Enter your username:',
-      validate: (input) => {
-        if (!input.trim()) return 'Username is required'
-        return true
-      }
-    })
-
-    const petName = await input({
-      message: 'Enter a local name for this room (optional):',
-      validate: (input) => {
-        // Allow empty input for optional field
-        return true
-      }
-    })
-
-    const { sheet } = await roomManager.joinExistingRoom(roomLink, username, petName.trim() || undefined)
+    const { roomLink, username, petName } = result
+    const { sheet } = await roomManager.joinExistingRoom(roomLink, username, petName)
     const member = await sheet.join(username)
     
     console.log(chalk.green('✅ Connected to schema sheets'))
