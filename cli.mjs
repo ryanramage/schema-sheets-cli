@@ -25,6 +25,8 @@ import { selectJsonFile, readJsonFile, downloadJsonFromUrl } from './utils/file-
 import { displayJsonWithFallback, createRowTable, addRowToTable, createRowChoices } from './utils/display.mjs'
 import { DefaultConfig, paths } from './config/default-config.mjs'
 import { issueSchema, issue } from './examples/issue-schema.mjs'
+import { RoomManager } from './rooms/room-manager.mjs'
+import { SheetOperations } from './sheets/sheet-operations.mjs'
 
 
 // Try to load config from file
@@ -53,13 +55,14 @@ const wakeup = new Wakeup()
 const blind = new BlindPeering(swarm, store, { wakeup, mirrors: config.DEFAULT_BLIND_PEER_KEYS })
 const lobby = createLobby(config.storage)
 
-// Track current sheet for cleanup
-let currentSheet = null
-let currentRoomLink = null
-let currentRoomName = null
-let lastJmesQuery = ''
+// Initialize managers
+const roomManager = new RoomManager(lobby, swarm, store, blind, wakeup)
+const sheetOps = new SheetOperations()
 
 async function copyRoomLinkToClipboard() {
+  const currentRoomLink = roomManager.getCurrentRoomLink()
+  const currentSheet = roomManager.getCurrentSheet()
+  
   if (!currentRoomLink) {
     console.log(chalk.red('No room link available'))
     await input({ message: 'Press Enter to continue...' })
@@ -70,23 +73,9 @@ async function copyRoomLinkToClipboard() {
   return showMainMenu(currentSheet)
 }
 
-async function closeCurrentSheet() {
-  if (currentSheet) {
-    try {
-      await currentSheet.close()
-      console.log(chalk.gray('Sheet closed'))
-    } catch (error) {
-      console.warn(chalk.yellow('Warning: Error closing sheet:'), error.message)
-    }
-    currentSheet = null
-    currentRoomLink = null
-    currentRoomName = null
-    lastJmesQuery = '' // Reset query when leaving room
-  }
-}
-
 async function teardown () {
-  await closeCurrentSheet()
+  await roomManager.closeCurrentSheet()
+  sheetOps.resetLastJmesQuery()
   await blind.close()
   await swarm.destroy()
   await store.close()
@@ -98,51 +87,6 @@ swarm.on('connection', c => {
   wakeup.addStream(c)
 })
 
-async function startSheet (key, encryptionKey, username) {
-  const sheet = new SchemaSheets(store.namespace(crypto.randomBytes(32)), key, { encryptionKey, wakeup })
-  await sheet.ready()
-  swarm.join(sheet.base.discoveryKey)
-  blind.addAutobaseBackground(sheet.base)
-  
-  // Track the current sheet for cleanup
-  currentSheet = sheet
-  if (username) {
-    await sheet.join(username)
-  }
-  
-  return { key: sheet.base.key, local: sheet.base.local.key, sheet }
-}
-
-async function createNewRoom(petName, username) {
-  const room = await lobby.createRoom(petName, username)
-  const roomLink = lobby.generateRoomLink(room.keyBuffer, room.encryptionKeyBuffer)
-  
-  // Store the current room link and name for clipboard functionality and headers
-  currentRoomLink = roomLink
-  currentRoomName = petName
-  
-  console.log(chalk.green(`✅ Room "${petName}" created!`))
-  console.log(chalk.blue(`Room Link: ${roomLink}`))
-  
-  return startSheet(room.keyBuffer, room.encryptionKeyBuffer, username)
-}
-
-async function joinExistingRoom(roomLink, username, petName) {
-  try {
-    const room = await lobby.joinRoom(roomLink, username, petName)
-    
-    // Store the current room link and name for clipboard functionality and headers
-    currentRoomLink = roomLink
-    currentRoomName = room.petName
-    
-    console.log(chalk.green(`✅ Joined room "${room.petName}"`))
-    
-    return startSheet(room.keyBuffer, room.encryptionKeyBuffer, username)
-  } catch (error) {
-    console.error(chalk.red('Failed to join room:'), error.message)
-    throw error
-  }
-}
 
 process.once('SIGINT', async function () {
   console.log('shutting down....')
@@ -153,7 +97,7 @@ process.once('SIGINT', async function () {
 
 async function showMainMenu(sheet) {
   console.clear()
-  console.log(chalk.blue.bold(`📊 Room: ${currentRoomName || 'Unknown'}`))
+  console.log(chalk.blue.bold(`📊 Room: ${roomManager.getCurrentRoomName() || 'Unknown'}`))
   console.log(chalk.gray('Navigate with arrow keys, select with Enter\n'))
 
   try {
@@ -231,7 +175,8 @@ async function showMainMenu(sheet) {
           await copyRoomLinkToClipboard()
           break
         case 'lobby':
-          await closeCurrentSheet()
+          await roomManager.closeCurrentSheet()
+          sheetOps.resetLastJmesQuery()
           await showRoomLobby()
           break
       }
@@ -246,31 +191,19 @@ async function showMainMenu(sheet) {
 
 async function showChangeRoomName(sheet) {
   console.clear()
-  console.log(chalk.blue.bold(`✏️ Change Room Name - Current: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`✏️ Change Room Name - Current: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   try {
     const newPetName = await input({
       message: 'Enter new room name:',
-      default: currentRoomName || '',
+      default: roomManager.getCurrentRoomName() || '',
       validate: (input) => {
         if (!input.trim()) return 'Room name is required'
         return true
       }
     })
 
-    // Update the room name in the lobby
-    if (currentRoomLink) {
-      const decoded = z32.decode(currentRoomLink)
-      const key = decoded.subarray(0, 32)
-      const keyHex = key.toString('hex')
-      
-      await lobby.updateRoom(keyHex, { petName: newPetName })
-      currentRoomName = newPetName
-      
-      console.log(chalk.green(`✅ Room name changed to "${newPetName}"`))
-    } else {
-      console.log(chalk.yellow('Warning: Could not update room name (no room link available)'))
-    }
+    await roomManager.changeRoomName(newPetName)
     
     await input({ message: 'Press Enter to continue...' })
     return showMainMenu(sheet)
@@ -283,7 +216,7 @@ async function showChangeRoomName(sheet) {
 
 async function showAddSchema(sheet) {
   console.clear()
-  console.log(chalk.blue.bold(`➕ Add New Schema - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`➕ Add New Schema - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   const method = await select({
     message: 'How would you like to add the schema?',
@@ -323,39 +256,9 @@ async function showAddSchema(sheet) {
       }
     })
 
-    let schemaContent
-
-    if (method === 'file') {
-      const filePath = await selectJsonFile('Select schema JSON file:')
-      schemaContent = readJsonFile(filePath)
-    } else if (method === 'url') {
-      const url = await input({
-        message: 'Enter schema URL:',
-        validate: (input) => {
-          if (!input.trim()) return 'URL is required'
-          try {
-            new URL(input)
-            return true
-          } catch {
-            return 'Invalid URL format'
-          }
-        }
-      })
-
-      console.log(chalk.gray('Downloading schema...'))
-      schemaContent = await downloadJsonFromUrl(url)
-    } else if (method === 'example') {
-      schemaContent = issueSchema
-      console.log(chalk.gray('\nUsing example issue schema:'))
-      console.log(JSON.stringify(schemaContent, null, 2))
-      console.log('')
-    }
-
-    const schemaId = await sheet.addNewSchema(name, schemaContent)
-    
-    console.log(chalk.green(`✅ Schema "${name}" added successfully with ID: ${schemaId}`))
+    await sheetOps.addSchema(sheet, method, name)
     await input({ message: 'Press Enter to continue...' })
-    
+      
     return showMainMenu(sheet)
   } catch (error) {
     console.error(chalk.red('Error adding schema:'), error.message)
@@ -366,7 +269,7 @@ async function showAddSchema(sheet) {
 
 async function showRowMenu(sheet, schema) {
   console.clear()
-  console.log(chalk.blue.bold(`📊 Managing Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`📊 Managing Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   const choice = await select({
     message: 'What would you like to do?',
@@ -419,7 +322,7 @@ async function showRowMenu(sheet, schema) {
 
 async function showFilterRows(sheet, schema) {
   console.clear()
-  console.log(chalk.blue.bold(`🔍 Filter Rows - Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`🔍 Filter Rows - Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   const ranges = getDateRanges()
   
@@ -595,7 +498,7 @@ async function showQuerySelection(sheet, schema) {
       const queryId = queryChoice.replace('saved-', '')
       const selectedQuery = savedQueries.find(q => q.queryId === queryId)
       if (selectedQuery) {
-        lastJmesQuery = selectedQuery.JMESPathQuery
+        sheetOps.setLastJmesQuery(selectedQuery.JMESPathQuery)
         return selectedQuery.JMESPathQuery
       }
     }
@@ -607,7 +510,7 @@ async function showQuerySelection(sheet, schema) {
       
       const customQuery = await input({
         message: 'JMESPath query:',
-        default: lastJmesQuery,
+        default: sheetOps.getLastJmesQuery(),
         validate: (input) => {
           // Allow empty input
           if (!input.trim()) return true
@@ -616,31 +519,11 @@ async function showQuerySelection(sheet, schema) {
       })
 
       const queryText = customQuery.trim()
-      lastJmesQuery = queryText
+      sheetOps.setLastJmesQuery(queryText)
 
       // Ask if user wants to save this query
       if (queryText) {
-        const shouldSave = await confirm({
-          message: 'Save this query for reuse?',
-          default: false
-        })
-
-        if (shouldSave) {
-          const queryName = await input({
-            message: 'Enter name for this query:',
-            validate: (input) => {
-              if (!input.trim()) return 'Query name is required'
-              return true
-            }
-          })
-
-          try {
-            await sheet.addQuery(schema.schemaId, queryName.trim(), queryText)
-            console.log(chalk.green(`✅ Query "${queryName.trim()}" saved!`))
-          } catch (error) {
-            console.log(chalk.yellow(`Warning: Could not save query: ${error.message}`))
-          }
-        }
+        await sheetOps.saveQuery(sheet, schema, queryText)
       }
 
       return queryText
@@ -715,7 +598,7 @@ async function showManageQueries(sheet, schema) {
 
 async function showFilteredRowList(sheet, schema, filter, filterType, jmesQuery = '') {
   console.clear()
-  console.log(chalk.blue.bold(`📋 Filtered Rows - Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`📋 Filtered Rows - Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
   
   console.log(chalk.gray(`Date Filter: ${formatDateRange(filterType, filter.gte, filter.lte)}`))
   
@@ -766,7 +649,7 @@ async function showFilteredRowList(sheet, schema, filter, filterType, jmesQuery 
 
 async function showRowList(sheet, schema) {
   console.clear()
-  console.log(chalk.blue.bold(`📋 Rows in Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`📋 Rows in Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   try {
     const rows = await sheet.list(schema.schemaId, {})
@@ -858,7 +741,7 @@ async function showWebForm(sheet, schema) {
 
 async function showAddRow(sheet, schema) {
   console.clear()
-  console.log(chalk.blue.bold(`➕ Add Row to Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`➕ Add Row to Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   const method = await select({
     message: 'How would you like to add the row?',
@@ -888,52 +771,9 @@ async function showAddRow(sheet, schema) {
     return showWebForm(sheet, schema)
   }
 
-  // File method (existing code)
+  // File method
   try {
-    const filePath = await selectJsonFile('Select JSON file:')
-    const jsonContent = readJsonFile(filePath)
-    
-    // Validate JSON against schema using AJV
-    const ajv = new Ajv({ allErrors: true })
-    addFormats(ajv)
-
-    const validate = ajv.compile(schema.jsonSchema)
-    const valid = validate(jsonContent)
-    
-    // Show preview of JSON
-    console.log(chalk.gray('\nJSON Preview:'))
-    console.log(JSON.stringify(jsonContent, null, 2))
-    
-    if (!valid) {
-      console.log(chalk.red('\n❌ JSON validation failed against schema!'))
-      console.log(chalk.yellow('\nValidation errors:'))
-      validate.errors.forEach((error, index) => {
-        console.log(chalk.red(`  ${index + 1}. ${error.instancePath || 'root'}: ${error.message}`))
-        if (error.params && error.params.allowedValues) {
-          console.log(chalk.gray(`     Allowed values: ${error.params.allowedValues.join(', ')}`))
-        }
-      })
-      console.log(chalk.gray('\nPlease fix the JSON data and try again.'))
-      await input({ message: 'Press Enter to continue...' })
-      return showRowMenu(sheet, schema)
-    }
-    
-    console.log(chalk.green('\n✅ JSON validation passed!'))
-    
-    const confirm = await input({
-      message: '\nAdd this row? (y/N):',
-      default: 'n'
-    })
-
-    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
-      console.log(chalk.yellow('Row addition cancelled'))
-      await input({ message: 'Press Enter to continue...' })
-      return showRowMenu(sheet, schema)
-    }
-
-    const rowId = await sheet.addRow(schema.schemaId, jsonContent)
-    
-    console.log(chalk.green(`✅ Row added successfully with ID: ${rowId}`))
+    await sheetOps.addRowFromFile(sheet, schema)
     await input({ message: 'Press Enter to continue...' })
     
     return showRowMenu(sheet, schema)
@@ -947,7 +787,7 @@ async function showAddRow(sheet, schema) {
 
 async function showRowDetail(sheet, schema, row, returnTo = 'list') {
   console.clear()
-  console.log(chalk.blue.bold(`📄 Row Detail - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`📄 Row Detail - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
   console.log(chalk.gray(`Schema: ${schema.name}`))
   console.log(chalk.gray(`Row ID: ${row.rowId}\n`))
   
@@ -963,7 +803,7 @@ async function showRowDetail(sheet, schema, row, returnTo = 'list') {
 
 async function showUISchemaMenu(sheet, schema) {
   console.clear()
-  console.log(chalk.blue.bold(`🎨 UI Schema Management - Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`🎨 UI Schema Management - Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   try {
     const uiSchemas = await sheet.listUISchemas(schema.schemaId)
@@ -1036,7 +876,7 @@ async function showUISchemaMenu(sheet, schema) {
 
 async function showAddUISchema(sheet, schema) {
   console.clear()
-  console.log(chalk.blue.bold(`➕ Add UI Schema - Schema: ${schema.name} - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`➕ Add UI Schema - Schema: ${schema.name} - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
   const method = await select({
     message: 'How would you like to add the UI schema?',
@@ -1071,47 +911,7 @@ async function showAddUISchema(sheet, schema) {
       }
     })
 
-    let uiSchemaContent
-
-    if (method === 'file') {
-      const filePath = await selectJsonFile('Select UI schema JSON file:')
-      uiSchemaContent = readJsonFile(filePath)
-    } else if (method === 'url') {
-      const url = await input({
-        message: 'Enter UI schema URL:',
-        validate: (input) => {
-          if (!input.trim()) return 'URL is required'
-          try {
-            new URL(input)
-            return true
-          } catch {
-            return 'Invalid URL format'
-          }
-        }
-      })
-
-      console.log(chalk.gray('Downloading UI schema...'))
-      uiSchemaContent = await downloadJsonFromUrl(url)
-    }
-
-    // Show preview
-    console.log(chalk.gray('\nUI Schema Preview:'))
-    console.log(JSON.stringify(uiSchemaContent, null, 2))
-    
-    const confirmAdd = await confirm({
-      message: 'Add this UI schema?',
-      default: true
-    })
-
-    if (!confirmAdd) {
-      console.log(chalk.yellow('UI schema addition cancelled'))
-      await input({ message: 'Press Enter to continue...' })
-      return showUISchemaMenu(sheet, schema)
-    }
-
-    const uischemaId = await sheet.addUISchema(schema.schemaId, name, uiSchemaContent)
-    
-    console.log(chalk.green(`✅ UI Schema "${name}" added successfully with ID: ${uischemaId}`))
+    await sheetOps.addUISchema(sheet, schema, method, name)
     await input({ message: 'Press Enter to continue...' })
     
     return showUISchemaMenu(sheet, schema)
@@ -1124,7 +924,7 @@ async function showAddUISchema(sheet, schema) {
 
 async function showUISchemaDetail(sheet, schema, uiSchema) {
   console.clear()
-  console.log(chalk.blue.bold(`📄 UI Schema Detail - Room: ${currentRoomName || 'Unknown'}\n`))
+  console.log(chalk.blue.bold(`📄 UI Schema Detail - Room: ${roomManager.getCurrentRoomName() || 'Unknown'}\n`))
   console.log(chalk.gray(`Schema: ${schema.name}`))
   console.log(chalk.gray(`UI Schema: ${uiSchema.name}`))
   console.log(chalk.gray(`UI Schema ID: ${uiSchema.uischemaId}\n`))
@@ -1207,47 +1007,7 @@ async function showUpdateUISchema(sheet, schema, uiSchema) {
   }
 
   try {
-    let newUISchemaContent
-
-    if (method === 'file') {
-      const filePath = await selectJsonFile('Select new UI schema JSON file:')
-      newUISchemaContent = readJsonFile(filePath)
-    } else if (method === 'url') {
-      const url = await input({
-        message: 'Enter UI schema URL:',
-        validate: (input) => {
-          if (!input.trim()) return 'URL is required'
-          try {
-            new URL(input)
-            return true
-          } catch {
-            return 'Invalid URL format'
-          }
-        }
-      })
-
-      console.log(chalk.gray('Downloading UI schema...'))
-      newUISchemaContent = await downloadJsonFromUrl(url)
-    }
-
-    // Show preview
-    console.log(chalk.gray('\nNew UI Schema Preview:'))
-    console.log(JSON.stringify(newUISchemaContent, null, 2))
-    
-    const confirmUpdate = await confirm({
-      message: 'Update the UI schema with this content?',
-      default: true
-    })
-
-    if (!confirmUpdate) {
-      console.log(chalk.yellow('UI schema update cancelled'))
-      await input({ message: 'Press Enter to continue...' })
-      return showUISchemaDetail(sheet, schema, uiSchema)
-    }
-
-    await sheet.updateUISchema(uiSchema.uischemaId, schema.schemaId, uiSchema.name, newUISchemaContent)
-    
-    console.log(chalk.green(`✅ UI Schema "${uiSchema.name}" updated successfully`))
+    await sheetOps.updateUISchema(sheet, schema, uiSchema, method)
     await input({ message: 'Press Enter to continue...' })
     
     return showUISchemaMenu(sheet, schema)
@@ -1389,7 +1149,7 @@ async function showCreateRoom() {
       }
     })
 
-    const { sheet } = await createNewRoom(petName, username)
+    const { sheet } = await roomManager.createNewRoom(petName, username)
     const member = await sheet.join(username)
     
     console.log(chalk.green('✅ Connected to schema sheets'))
@@ -1438,7 +1198,7 @@ async function showJoinRoom() {
       }
     })
 
-    const { sheet } = await joinExistingRoom(roomLink, username, petName.trim() || undefined)
+    const { sheet } = await roomManager.joinExistingRoom(roomLink, username, petName.trim() || undefined)
     const member = await sheet.join(username)
     
     console.log(chalk.green('✅ Connected to schema sheets'))
@@ -1458,18 +1218,11 @@ async function joinKnownRoom(room) {
   console.log(chalk.blue.bold(`🏠 Joining Room: ${room.petName}\n`))
 
   try {
-    const roomLink = lobby.generateRoomLink(z32.decode(room.key), z32.decode(room.encryptionKey))
-    const { sheet } = await joinExistingRoom(roomLink, room.username)
-    const member = await sheet.join(room.username)
-    
-    console.log(chalk.green('✅ Connected to schema sheets'))
-    await input({ message: 'Press Enter to continue to room...' })
+    const { sheet } = await roomManager.joinKnownRoom(room)
     
     // Start the schema sheets TUI
     await showMainMenu(sheet)
   } catch (error) {
-    console.error(chalk.red('Error joining room:'), error.message)
-    await input({ message: 'Press Enter to continue...' })
     return showRoomLobby()
   }
 }
