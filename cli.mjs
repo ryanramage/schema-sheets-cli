@@ -9,7 +9,6 @@ import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import SchemaSheets from 'schema-sheets'
-import envPaths from 'env-paths';
 import {makeDirectory} from 'make-dir'
 import { select, input, confirm } from '@inquirer/prompts'
 import fileSelector from 'inquirer-file-selector'
@@ -24,14 +23,9 @@ import { copyToClipboardWithFeedback } from './utils/clipboard.mjs'
 import { getDateRanges, formatDateRange } from './utils/date-filters.mjs'
 import { selectJsonFile, readJsonFile, downloadJsonFromUrl } from './utils/file-helpers.mjs'
 import { displayJsonWithFallback, createRowTable, addRowToTable, createRowChoices } from './utils/display.mjs'
-const paths = envPaths('schema-sheets')
+import { DefaultConfig, paths } from './config/default-config.mjs'
+import { issueSchema, issue } from './examples/issue-schema.mjs'
 
-
-// Default configuration
-const DefaultConfig = {
-  storage: paths.data,
-  DEFAULT_BLIND_PEER_KEYS: []
-}
 
 // Try to load config from file
 let config = { ...DefaultConfig }
@@ -156,30 +150,6 @@ process.once('SIGINT', async function () {
   process.exit()
 })
 
-// Define missing schemas and data
-const issueSchema = {
-  type: 'object',
-  properties: {
-    title: { type: 'string' },
-    status: { 
-      type: 'string',
-      enum: ['open', 'in-progress', 'closed']
-    },
-    priority: { 
-      type: 'string',
-      enum: ['low', 'med', 'high']
-    },
-    description: { type: 'string' }
-  },
-  required: ['title', 'status', 'priority']
-}
-
-const issue = {
-  title: 'Sample Issue',
-  status: 'open',
-  priority: 'high',
-  description: 'This is a sample issue'
-}
 
 async function showMainMenu(sheet) {
   console.clear()
