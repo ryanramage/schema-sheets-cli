@@ -1,7 +1,7 @@
 import fs from 'fs'
 import { join } from 'path'
 import { paths } from './default-config.mjs'
-import IdentityKey from '../examples/sign-example.js'
+import IdentityKey from 'keet-identity-key'
 import b4a from 'b4a'
 import sodium from 'sodium-native'
 
