@@ -52,6 +52,9 @@ export async function createSigningConfig(keetUsername, mnemonic) {
     bootstrapProof: JSON.stringify(bootstrapProof)
   }
   
+  // Ensure config directory exists
+  fs.mkdirSync(paths.config, { recursive: true })
+  
   // Write file with restrictive permissions
   fs.writeFileSync(SIGNING_FILE_PATH, JSON.stringify(signingData, null, 2), { mode: 0o600 })
   
