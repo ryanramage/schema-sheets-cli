@@ -445,7 +445,13 @@ export class SheetOperations {
     try {
       const savedQueries = await sheet.listQueries(schema.schemaId)
       
-      const choices = []
+      const choices = [
+        {
+          name: '🚫 No Query Filter',
+          value: 'none',
+          description: 'Skip JMESPath filtering'
+        }
+      ]
       
       // Add saved queries if any exist
       if (savedQueries.length > 0) {
@@ -476,11 +482,6 @@ export class SheetOperations {
           name: '✏️ Enter Custom Query',
           value: 'custom',
           description: 'Enter a new JMESPath query'
-        },
-        {
-          name: '🚫 No Query Filter',
-          value: 'none',
-          description: 'Skip JMESPath filtering'
         }
       )
 
