@@ -1,5 +1,6 @@
 import chalk from 'chalk'
 import z32 from 'z32'
+import Id from 'hypercore-id-encoding'
 import { password } from '@inquirer/prompts'
 import { BaseMenu } from './base-menu.mjs'
 import { signingConfigExists, createSigningConfig } from '../config/signing-utils.mjs'
@@ -104,7 +105,7 @@ export class RoomLobbyMenu extends BaseMenu {
       
       if (signingConfig) {
         console.log(chalk.green('✅ Signing configuration created successfully!'))
-        console.log(chalk.gray(`Identity: ${signingConfig.identityPublicKey.toString('hex').substring(0, 16)}...`))
+        console.log(chalk.gray(`Identity: ${Id.normalize(signingConfig.identityPublicKey).substring(0, 16)}...`))
       } else {
         throw new Error('Failed to create signing configuration')
       }
