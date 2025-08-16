@@ -3,7 +3,7 @@ import z32 from 'z32'
 import Id from 'hypercore-id-encoding'
 import { password } from '@inquirer/prompts'
 import { BaseMenu } from './base-menu.mjs'
-import { signingConfigExists, createSigningConfig } from '../config/signing-utils.mjs'
+import { signingConfigExists, createSigningConfig, loadSigningConfig } from '../config/signing-utils.mjs'
 
 export class RoomLobbyMenu extends BaseMenu {
   constructor(roomManager, sheetOps, lobby) {
@@ -130,12 +130,21 @@ export class RoomLobbyMenu extends BaseMenu {
         }
       })
 
-      const username = await this.getInput('Enter your username:', {
-        validate: (input) => {
-          if (!input.trim()) return 'Username is required'
-          return true
-        }
-      })
+      // Check if we have a Keet username configured
+      const signingConfig = loadSigningConfig()
+      let username
+
+      if (signingConfig && signingConfig.keetUsername) {
+        username = signingConfig.keetUsername
+        console.log(chalk.gray(`Using Keet username: ${username}`))
+      } else {
+        username = await this.getInput('Enter your username:', {
+          validate: (input) => {
+            if (!input.trim()) return 'Username is required'
+            return true
+          }
+        })
+      }
 
       return { petName, username }
     } catch (error) {
