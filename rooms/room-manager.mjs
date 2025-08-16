@@ -103,6 +103,10 @@ export class RoomManager {
     }
   }
 
+  setCurrentRoomName(roomName) {
+    this.currentRoomName = roomName
+  }
+
   async closeCurrentSheet() {
     if (this.currentSheet) {
       try {

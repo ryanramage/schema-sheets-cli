@@ -1,4 +1,5 @@
 import chalk from 'chalk'
+import z32 from 'z32'
 import { BaseMenu } from './base-menu.mjs'
 
 export class MainMenu extends BaseMenu {
@@ -91,5 +92,19 @@ export class MainMenu extends BaseMenu {
       await this.waitForContinue()
       return this.show(sheet)
     }
+  }
+
+  async showCopyRoomLink(sheet) {
+    const currentRoomLink = this.roomManager.getCurrentRoomLink()
+    
+    if (!currentRoomLink) {
+      console.log(chalk.red('No room link available'))
+      await this.waitForContinue()
+      return this.show(sheet)
+    }
+
+    const { copyToClipboardWithFeedback } = await import('../utils/clipboard.mjs')
+    await copyToClipboardWithFeedback(currentRoomLink, 'Room Link')
+    return this.show(sheet)
   }
 }
