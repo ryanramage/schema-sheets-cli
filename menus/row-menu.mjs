@@ -53,13 +53,64 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      // Create table with row snippets
-      const table = createRowTable()
-      rows.forEach(row => addRowToTable(table, row))
+      // Check for list view query
+      const listViewQuery = await this.sheetOps.getListViewQuery(sheet, schema)
+      let transformedRows = rows
+      let table
+      let choices
+
+      if (listViewQuery) {
+        console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
+        
+        // Apply list view transformation
+        const { applyListViewQuery, createDynamicTable, addDynamicRowToTable, createListViewRowChoices } = await import('../utils/display.mjs')
+        transformedRows = await applyListViewQuery(rows, listViewQuery.JMESPathQuery)
+        
+        // Check if we have valid list view data
+        const hasListViewData = transformedRows.some(row => row.listViewData !== null)
+        
+        if (hasListViewData) {
+          // Get columns from the first successful transformation
+          const sampleData = transformedRows.find(row => row.listViewData !== null)?.listViewData
+          const columns = sampleData ? Object.keys(sampleData) : []
+          
+          if (columns.length > 0) {
+            // Create dynamic table
+            table = createDynamicTable(columns)
+            transformedRows.forEach(row => {
+              if (row.listViewData) {
+                addDynamicRowToTable(table, row.listViewData)
+              } else {
+                // Add fallback row for failed transformations
+                const fallbackData = {}
+                columns.forEach(col => { fallbackData[col] = '(error)' })
+                addDynamicRowToTable(table, fallbackData)
+              }
+            })
+            
+            choices = createListViewRowChoices(transformedRows)
+          } else {
+            // Fallback to regular table
+            console.log(chalk.yellow('List view query returned no columns, falling back to JSON snippets\n'))
+            table = createRowTable()
+            rows.forEach(row => addRowToTable(table, row))
+            choices = createRowChoices(rows)
+          }
+        } else {
+          // Fallback to regular table
+          console.log(chalk.yellow('List view query failed on all rows, falling back to JSON snippets\n'))
+          table = createRowTable()
+          rows.forEach(row => addRowToTable(table, row))
+          choices = createRowChoices(rows)
+        }
+      } else {
+        // No list view query, use regular table
+        table = createRowTable()
+        rows.forEach(row => addRowToTable(table, row))
+        choices = createRowChoices(rows)
+      }
 
       console.log(table.toString())
-
-      const choices = createRowChoices(rows)
 
       choices.push({
         name: chalk.gray('← Back to Row Menu'),
@@ -210,13 +261,64 @@ export class RowMenu extends BaseMenu {
         return this.showFilterRows(sheet, schema, returnCallback)
       }
 
-      // Create table with row snippets
-      const table = createRowTable()
-      rows.forEach(row => addRowToTable(table, row))
+      // Check for list view query (only if no JMESPath filter is already applied)
+      const listViewQuery = !jmesQuery ? await this.sheetOps.getListViewQuery(sheet, schema) : null
+      let transformedRows = rows
+      let table
+      let choices
+
+      if (listViewQuery) {
+        console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
+        
+        // Apply list view transformation
+        const { applyListViewQuery, createDynamicTable, addDynamicRowToTable, createListViewRowChoices } = await import('../utils/display.mjs')
+        transformedRows = await applyListViewQuery(rows, listViewQuery.JMESPathQuery)
+        
+        // Check if we have valid list view data
+        const hasListViewData = transformedRows.some(row => row.listViewData !== null)
+        
+        if (hasListViewData) {
+          // Get columns from the first successful transformation
+          const sampleData = transformedRows.find(row => row.listViewData !== null)?.listViewData
+          const columns = sampleData ? Object.keys(sampleData) : []
+          
+          if (columns.length > 0) {
+            // Create dynamic table
+            table = createDynamicTable(columns)
+            transformedRows.forEach(row => {
+              if (row.listViewData) {
+                addDynamicRowToTable(table, row.listViewData)
+              } else {
+                // Add fallback row for failed transformations
+                const fallbackData = {}
+                columns.forEach(col => { fallbackData[col] = '(error)' })
+                addDynamicRowToTable(table, fallbackData)
+              }
+            })
+            
+            choices = createListViewRowChoices(transformedRows)
+          } else {
+            // Fallback to regular table
+            console.log(chalk.yellow('List view query returned no columns, falling back to JSON snippets\n'))
+            table = createRowTable()
+            rows.forEach(row => addRowToTable(table, row))
+            choices = createRowChoices(rows)
+          }
+        } else {
+          // Fallback to regular table
+          console.log(chalk.yellow('List view query failed on all rows, falling back to JSON snippets\n'))
+          table = createRowTable()
+          rows.forEach(row => addRowToTable(table, row))
+          choices = createRowChoices(rows)
+        }
+      } else {
+        // No list view query or JMESPath filter already applied, use regular table
+        table = createRowTable()
+        rows.forEach(row => addRowToTable(table, row))
+        choices = createRowChoices(rows)
+      }
 
       console.log(table.toString())
-
-      const choices = createRowChoices(rows)
 
       choices.push({
         name: chalk.gray('← Back to Filter Menu'),
