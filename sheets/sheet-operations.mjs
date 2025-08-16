@@ -350,12 +350,82 @@ export class SheetOperations {
         }
       })
 
+      // Analyze the query to see if it's suitable for list view
+      const analysis = this.analyzeListViewQuery(queryText)
+      let isListView = false
+
+      if (analysis.isValidListView) {
+        console.log(chalk.gray(`\nDetected list view query with columns: ${analysis.columns.join(', ')}`))
+        
+        // Check for existing list view queries
+        const existingListView = await this.checkExistingListView(sheet, schema)
+        
+        if (existingListView) {
+          console.log(chalk.yellow(`\nWarning: Schema already has a list view query: "${existingListView.name}"`))
+          const replaceExisting = await confirm({
+            message: 'Replace the existing list view query with this one?',
+            default: false
+          })
+          
+          if (replaceExisting) {
+            // Remove list view flag from existing query
+            try {
+              await sheet.updateQuery(existingListView.queryId, existingListView.name, existingListView.JMESPathQuery, false)
+              console.log(chalk.gray(`Removed list view flag from "${existingListView.name}"`))
+              isListView = true
+            } catch (error) {
+              console.log(chalk.yellow(`Warning: Could not update existing query: ${error.message}`))
+            }
+          }
+        } else {
+          isListView = await confirm({
+            message: 'Use this query as the list view for displaying rows?',
+            default: true
+          })
+        }
+      }
+
       try {
-        await sheet.addQuery(schema.schemaId, queryName.trim(), queryText)
+        await sheet.addQuery(schema.schemaId, queryName.trim(), queryText, isListView)
         console.log(chalk.green(`✅ Query "${queryName.trim()}" saved!`))
+        if (isListView) {
+          console.log(chalk.green(`✅ Set as list view query`))
+        }
       } catch (error) {
         console.log(chalk.yellow(`Warning: Could not save query: ${error.message}`))
       }
+    }
+  }
+
+  /**
+   * Check if a schema already has a list view query
+   */
+  async checkExistingListView(sheet, schema) {
+    try {
+      const savedQueries = await sheet.listQueries(schema.schemaId)
+      return savedQueries.find(query => query.listView === true) || null
+    } catch (error) {
+      console.warn(`Failed to check existing list view queries:`, error.message)
+      return null
+    }
+  }
+
+  /**
+   * Get the list view query for a schema (returns the first one found)
+   */
+  async getListViewQuery(sheet, schema) {
+    try {
+      const savedQueries = await sheet.listQueries(schema.schemaId)
+      const listViewQueries = savedQueries.filter(query => query.listView === true)
+      
+      if (listViewQueries.length > 1) {
+        console.warn(`Schema "${schema.name}" has multiple list view queries, using the first one: "${listViewQueries[0].name}"`)
+      }
+      
+      return listViewQueries.length > 0 ? listViewQueries[0] : null
+    } catch (error) {
+      console.warn(`Failed to get list view query:`, error.message)
+      return null
     }
   }
 
@@ -387,9 +457,9 @@ export class SheetOperations {
         
         savedQueries.forEach(query => {
           choices.push({
-            name: `💾 ${query.name}`,
+            name: `💾 ${query.name}${query.listView ? ' 📋' : ''}`,
             value: `saved-${query.queryId}`,
-            description: `Query: ${query.JMESPathQuery}`
+            description: `Query: ${query.JMESPathQuery}${query.listView ? ' (List View)' : ''}`
           })
         })
         
@@ -499,9 +569,9 @@ export class SheetOperations {
       }
 
       const choices = savedQueries.map(query => ({
-        name: `${query.name} - ${query.JMESPathQuery}`,
+        name: `${query.name}${query.listView ? ' 📋' : ''} - ${query.JMESPathQuery}`,
         value: query.queryId,
-        description: 'Delete this query'
+        description: `Delete this query${query.listView ? ' (List View)' : ''}`
       }))
 
       choices.push({
