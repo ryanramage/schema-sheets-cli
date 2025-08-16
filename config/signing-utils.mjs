@@ -2,6 +2,7 @@ import fs from 'fs'
 import { join } from 'path'
 import { paths } from './default-config.mjs'
 import IdentityKey from 'keet-identity-key'
+import Id from 'hypercore-id-encoding'
 import b4a from 'b4a'
 import sodium from 'sodium-native'
 
@@ -20,10 +21,10 @@ export function loadSigningConfig() {
     const data = JSON.parse(fs.readFileSync(SIGNING_FILE_PATH, 'utf8'))
     return {
       keetUsername: data.keetUsername,
-      identityPublicKey: Buffer.from(data.identityPublicKey, 'hex'),
-      devicePublicKey: Buffer.from(data.devicePublicKey, 'hex'),
-      deviceSecretKey: Buffer.from(data.deviceSecretKey, 'hex'),
-      bootstrapProof: JSON.parse(data.bootstrapProof) // This might be an object
+      identityPublicKey: Id.decode(data.identityPublicKey),
+      devicePublicKey: Id.decode(data.devicePublicKey),
+      deviceSecretKey: b4a.from(data.deviceSecretKey, 'hex'),
+      bootstrapProof: b4a.from(data.bootstrapProof, 'hex')
     }
   } catch (error) {
     console.error('Error loading signing config:', error.message)
@@ -41,15 +42,15 @@ export async function createSigningConfig(keetUsername, mnemonic) {
   sodium.crypto_sign_keypair(devicePublicKey, deviceSecretKey)
   
   // Create bootstrap proof
-  const bootstrapProof = identity.bootstrap(devicePublicKey)
+  const bootstrapProof = await identity.bootstrap(devicePublicKey)
   
   // Prepare data for storage
   const signingData = {
     keetUsername,
-    identityPublicKey: identity.identityPublicKey.toString('hex'),
-    devicePublicKey: devicePublicKey.toString('hex'),
-    deviceSecretKey: deviceSecretKey.toString('hex'),
-    bootstrapProof: JSON.stringify(bootstrapProof)
+    identityPublicKey: Id.normalize(identity.identityKeyPair.publicKey),
+    devicePublicKey: Id.encode(devicePublicKey),
+    deviceSecretKey: b4a.toString(deviceSecretKey, 'hex'),
+    bootstrapProof: b4a.toString(bootstrapProof, 'hex')
   }
   
   // Ensure config directory exists

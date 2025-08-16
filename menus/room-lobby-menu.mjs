@@ -82,7 +82,6 @@ export class RoomLobbyMenu extends BaseMenu {
       const keetUsername = await this.getInput('Enter your Keet username:', {
         validate: (input) => {
           if (!input.trim()) return 'Keet username is required'
-          if (!input.includes('@')) return 'Keet username must contain @'
           return true
         }
       })
@@ -94,7 +93,7 @@ export class RoomLobbyMenu extends BaseMenu {
           if (!input.trim()) return 'Mnemonic is required'
           // Basic validation - should be multiple words
           const words = input.trim().split(/\s+/)
-          if (words.length < 12) return 'Mnemonic should be at least 12 words'
+          if (words.length < 24) return 'Mnemonic should be at least 24 words'
           return true
         }
       })
