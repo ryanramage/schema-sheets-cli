@@ -121,17 +121,17 @@ export class RowMenu extends BaseMenu {
                   const stringValue = String(v || '')
                   return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
                 }).join(' | ')
-                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                const rowIdDisplay = (row.uuid || '').substring(0, 16)
                 return {
                   name: `${rowIdDisplay}... - ${displayText}`,
-                  value: row.rowId,
+                  value: row.uuid,
                   description: 'View full JSON'
                 }
               } else {
-                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                const rowIdDisplay = (row.uuid || '').substring(0, 16)
                 return {
                   name: `${rowIdDisplay}... - (error)`,
-                  value: row.rowId,
+                  value: row.uuid,
                   description: 'View full JSON'
                 }
               }
@@ -367,17 +367,17 @@ export class RowMenu extends BaseMenu {
                   const stringValue = String(v || '')
                   return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
                 }).join(' | ')
-                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                const rowIdDisplay = (row.uuid || '').substring(0, 16)
                 return {
                   name: `${rowIdDisplay}... - ${displayText}`,
-                  value: row.rowId,
+                  value: row.uuid,
                   description: 'View full JSON'
                 }
               } else {
-                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                const rowIdDisplay = (row.uuid || '').substring(0, 16)
                 return {
                   name: `${rowIdDisplay}... - (error)`,
-                  value: row.rowId,
+                  value: row.uuid,
                   description: 'View full JSON'
                 }
               }
@@ -436,7 +436,8 @@ export class RowMenu extends BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(`📄 Row Detail - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
     console.log(chalk.gray(`Schema: ${schema.name}`))
-    console.log(chalk.gray(`Row ID: ${row.rowId}\n`))
+    console.log(chalk.gray(`Row UUID: ${row.uuid}`))
+    console.log(chalk.gray(`Row Time: ${new Date(row.time).toLocaleString()}\n`))
     
     await displayJsonWithFallback(row.json, 'Full JSON')
     
@@ -1033,12 +1034,12 @@ export class RowMenu extends BaseMenu {
         try {
           const result = jmespath.search(rows[i].json, query.JMESPathQuery)
           results.push({
-            rowId: rows[i].rowId.substring(0, 16) + '...',
+            uuid: rows[i].uuid.substring(0, 16) + '...',
             result: result
           })
         } catch (error) {
           results.push({
-            rowId: rows[i].rowId.substring(0, 16) + '...',
+            uuid: rows[i].uuid.substring(0, 16) + '...',
             error: error.message
           })
         }
@@ -1046,7 +1047,7 @@ export class RowMenu extends BaseMenu {
 
       // Display results
       results.forEach((result, index) => {
-        console.log(chalk.blue(`Row ${index + 1} (${result.rowId}):`))
+        console.log(chalk.blue(`Row ${index + 1} (${result.uuid}):`))
         if (result.error) {
           console.log(chalk.red(`  Error: ${result.error}`))
         } else {

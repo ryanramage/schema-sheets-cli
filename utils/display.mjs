@@ -66,7 +66,7 @@ export async function displayJsonWithFallback(jsonData, title = 'JSON Data') {
 
 export function createRowTable() {
   return new Table({
-    head: ['Row ID', 'JSON Snippet'],
+    head: ['UUID', 'JSON Snippet'],
     colWidths: [20, 60]
   })
 }
@@ -75,18 +75,18 @@ export function addRowToTable(table, row) {
   const jsonString = JSON.stringify(row.json || {})
   const snippet = jsonString.substring(0, 55)
   const displaySnippet = snippet.length === 55 ? snippet + '...' : snippet
-  const rowIdDisplay = (row.rowId || '').substring(0, 16) + '...'
-  table.push([rowIdDisplay, displaySnippet])
+  const uuidDisplay = (row.uuid || '').substring(0, 16) + '...'
+  table.push([uuidDisplay, displaySnippet])
 }
 
 export function createRowChoices(rows) {
   return rows.map(row => {
     const jsonString = JSON.stringify(row.json || {})
     const snippet = jsonString.substring(0, 40)
-    const rowIdDisplay = (row.rowId || '').substring(0, 16)
+    const uuidDisplay = (row.uuid || '').substring(0, 16)
     return {
-      name: `${rowIdDisplay}... - ${snippet}...`,
-      value: row.rowId,
+      name: `${uuidDisplay}... - ${snippet}...`,
+      value: row.uuid,
       description: 'View full JSON'
     }
   })
@@ -144,14 +144,16 @@ export async function applyListViewQuery(rows, queryText) {
         const result = jmespath.search(row.json, queryText)
         if (result && typeof result === 'object' && !Array.isArray(result)) {
           transformedRows.push({
-            rowId: row.rowId,
+            uuid: row.uuid,
+            time: row.time,
             listViewData: result,
             originalJson: row.json
           })
         } else {
           // Fallback to original row if query doesn't return an object
           transformedRows.push({
-            rowId: row.rowId,
+            uuid: row.uuid,
+            time: row.time,
             listViewData: null,
             originalJson: row.json
           })
@@ -159,7 +161,8 @@ export async function applyListViewQuery(rows, queryText) {
       } catch (error) {
         // Fallback to original row if query fails
         transformedRows.push({
-          rowId: row.rowId,
+          uuid: row.uuid,
+          time: row.time,
           listViewData: null,
           originalJson: row.json
         })
@@ -171,7 +174,8 @@ export async function applyListViewQuery(rows, queryText) {
     console.warn('Failed to apply list view query:', error.message)
     // Return rows in fallback format
     return rows.map(row => ({
-      rowId: row.rowId,
+      uuid: row.uuid,
+      time: row.time,
       listViewData: null,
       originalJson: row.json
     }))
@@ -187,20 +191,20 @@ export function createListViewRowChoices(transformedRows) {
       // Use list view data for display
       const values = Object.values(row.listViewData)
       const displayText = values.map(v => truncateValue(v, 20)).join(' | ')
-      const rowIdDisplay = (row.rowId || '').substring(0, 16)
+      const uuidDisplay = (row.uuid || '').substring(0, 16)
       return {
-        name: `${rowIdDisplay}... - ${displayText}`,
-        value: row.rowId,
+        name: `${uuidDisplay}... - ${displayText}`,
+        value: row.uuid,
         description: 'View full JSON'
       }
     } else {
       // Fallback to JSON snippet
       const jsonString = JSON.stringify(row.originalJson || {})
       const snippet = jsonString.substring(0, 40)
-      const rowIdDisplay = (row.rowId || '').substring(0, 16)
+      const uuidDisplay = (row.uuid || '').substring(0, 16)
       return {
-        name: `${rowIdDisplay}... - ${snippet}...`,
-        value: row.rowId,
+        name: `${uuidDisplay}... - ${snippet}...`,
+        value: row.uuid,
         description: 'View full JSON'
       }
     }
