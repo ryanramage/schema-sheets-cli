@@ -176,8 +176,9 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      const selectedRow = rows.find(r => r.rowId === choice)
-      await this.showRowDetail(sheet, schema, selectedRow, 'list', returnCallback)
+      // Get the full row data since list view query may have filtered the JSON
+      const fullRow = await sheet.getRow(schema.schemaId, choice)
+      await this.showRowDetail(sheet, schema, fullRow, 'list', returnCallback)
     } catch (error) {
       console.error(chalk.red('Error loading rows:'), error.message)
       await this.waitForContinue()
@@ -421,8 +422,9 @@ export class RowMenu extends BaseMenu {
         return this.showFilterRows(sheet, schema, returnCallback)
       }
 
-      const selectedRow = rows.find(r => r.rowId === choice)
-      await this.showRowDetail(sheet, schema, selectedRow, 'filter', returnCallback)
+      // Get the full row data since list view query may have filtered the JSON
+      const fullRow = await sheet.getRow(schema.schemaId, choice)
+      await this.showRowDetail(sheet, schema, fullRow, 'filter', returnCallback)
     } catch (error) {
       console.error(chalk.red('Error loading filtered rows:'), error.message)
       await this.waitForContinue()
