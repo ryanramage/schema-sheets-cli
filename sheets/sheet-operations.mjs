@@ -214,4 +214,54 @@ export class SheetOperations {
   resetLastJmesQuery() {
     this.lastJmesQuery = ''
   }
+
+  async addRowFromFile(sheet, schema) {
+    try {
+      const filePath = await selectJsonFile('Select JSON file:')
+      const jsonContent = readJsonFile(filePath)
+      
+      // Validate JSON against schema using AJV
+      const ajv = new Ajv({ allErrors: true })
+      addFormats(ajv)
+
+      const validate = ajv.compile(schema.jsonSchema)
+      const valid = validate(jsonContent)
+      
+      // Show preview of JSON
+      console.log(chalk.gray('\nJSON Preview:'))
+      console.log(JSON.stringify(jsonContent, null, 2))
+      
+      if (!valid) {
+        console.log(chalk.red('\n❌ JSON validation failed against schema!'))
+        console.log(chalk.yellow('\nValidation errors:'))
+        validate.errors.forEach((error, index) => {
+          console.log(chalk.red(`  ${index + 1}. ${error.instancePath || 'root'}: ${error.message}`))
+          if (error.params && error.params.allowedValues) {
+            console.log(chalk.gray(`     Allowed values: ${error.params.allowedValues.join(', ')}`))
+          }
+        })
+        console.log(chalk.gray('\nPlease fix the JSON data and try again.'))
+        throw new Error('JSON validation failed')
+      }
+      
+      console.log(chalk.green('\n✅ JSON validation passed!'))
+      
+      const confirmAdd = await input({
+        message: '\nAdd this row? (y/N):',
+        default: 'n'
+      })
+
+      if (confirmAdd.toLowerCase() !== 'y' && confirmAdd.toLowerCase() !== 'yes') {
+        throw new Error('Row addition cancelled')
+      }
+
+      const rowId = await sheet.addRow(schema.schemaId, jsonContent)
+      console.log(chalk.green(`✅ Row added successfully with ID: ${rowId}`))
+      
+      return rowId
+    } catch (error) {
+      console.error(chalk.red('Error adding row:'), error.message)
+      throw error
+    }
+  }
 }
