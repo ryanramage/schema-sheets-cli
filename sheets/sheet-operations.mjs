@@ -10,6 +10,162 @@ export class SheetOperations {
     this.lastJmesQuery = ''
   }
 
+  /**
+   * Analyze a JMESPath query to determine if it's suitable for list view
+   * and extract column information
+   */
+  analyzeListViewQuery(queryText) {
+    if (!queryText || !queryText.trim()) {
+      return { isValidListView: false, columns: [], reason: 'Empty query' }
+    }
+
+    const query = queryText.trim()
+    
+    // Pattern 1: [].{key1: expr1, key2: expr2, ...}
+    // This is the main pattern we want to support for list views
+    const objectProjectionPattern = /^\[\]\.?\{([^}]+)\}$/
+    const objectMatch = query.match(objectProjectionPattern)
+    
+    if (objectMatch) {
+      try {
+        // Extract the content inside the braces
+        const objectContent = objectMatch[1]
+        
+        // Parse key-value pairs, handling nested expressions
+        const columns = []
+        let currentKey = ''
+        let currentValue = ''
+        let inKey = true
+        let braceDepth = 0
+        let bracketDepth = 0
+        let inQuotes = false
+        let quoteChar = ''
+        
+        for (let i = 0; i < objectContent.length; i++) {
+          const char = objectContent[i]
+          const prevChar = i > 0 ? objectContent[i - 1] : ''
+          
+          // Handle quotes
+          if ((char === '"' || char === "'") && prevChar !== '\\') {
+            if (!inQuotes) {
+              inQuotes = true
+              quoteChar = char
+            } else if (char === quoteChar) {
+              inQuotes = false
+              quoteChar = ''
+            }
+          }
+          
+          if (!inQuotes) {
+            // Track nesting depth
+            if (char === '{') braceDepth++
+            else if (char === '}') braceDepth--
+            else if (char === '[') bracketDepth++
+            else if (char === ']') bracketDepth--
+            
+            // Handle key-value separation
+            if (char === ':' && braceDepth === 0 && bracketDepth === 0 && inKey) {
+              inKey = false
+              continue
+            }
+            
+            // Handle field separation
+            if (char === ',' && braceDepth === 0 && bracketDepth === 0) {
+              if (currentKey.trim() && currentValue.trim()) {
+                columns.push({
+                  key: currentKey.trim(),
+                  expression: currentValue.trim()
+                })
+              }
+              currentKey = ''
+              currentValue = ''
+              inKey = true
+              continue
+            }
+          }
+          
+          // Accumulate characters
+          if (inKey) {
+            currentKey += char
+          } else {
+            currentValue += char
+          }
+        }
+        
+        // Handle the last key-value pair
+        if (currentKey.trim() && currentValue.trim()) {
+          columns.push({
+            key: currentKey.trim(),
+            expression: currentValue.trim()
+          })
+        }
+        
+        if (columns.length > 0) {
+          return {
+            isValidListView: true,
+            columns: columns.map(col => col.key),
+            columnDetails: columns,
+            pattern: 'object-projection'
+          }
+        }
+      } catch (error) {
+        return { 
+          isValidListView: false, 
+          columns: [], 
+          reason: `Failed to parse object projection: ${error.message}` 
+        }
+      }
+    }
+    
+    // Pattern 2: Simple property access like "title" or "status"
+    // This creates a single-column list view
+    const simplePropertyPattern = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$/
+    if (query.match(simplePropertyPattern)) {
+      return {
+        isValidListView: true,
+        columns: [query],
+        columnDetails: [{ key: query, expression: query }],
+        pattern: 'simple-property'
+      }
+    }
+    
+    // Pattern 3: Array of simple properties like "[title, status]"
+    const arrayPattern = /^\[([^\]]+)\]$/
+    const arrayMatch = query.match(arrayPattern)
+    if (arrayMatch) {
+      try {
+        const arrayContent = arrayMatch[1]
+        const properties = arrayContent.split(',').map(prop => prop.trim())
+        
+        // Validate each property is a simple property access
+        const validProperties = properties.every(prop => 
+          prop.match(/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$/)
+        )
+        
+        if (validProperties && properties.length > 0) {
+          return {
+            isValidListView: true,
+            columns: properties,
+            columnDetails: properties.map(prop => ({ key: prop, expression: prop })),
+            pattern: 'property-array'
+          }
+        }
+      } catch (error) {
+        return { 
+          isValidListView: false, 
+          columns: [], 
+          reason: `Failed to parse property array: ${error.message}` 
+        }
+      }
+    }
+    
+    return { 
+      isValidListView: false, 
+      columns: [], 
+      reason: 'Query pattern not suitable for list view. Use formats like: [].{title: title, status: status}' 
+    }
+  }
+
   async addSchema(sheet, method, name) {
     let schemaContent
 
