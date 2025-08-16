@@ -288,7 +288,9 @@ export class RowMenu extends BaseMenu {
       filter.query = jmesQuery.trim()
     }
 
-    await this.showFilteredRowList(sheet, schema, filter, choice, jmesQuery || '', returnCallback)
+    // Create a wrapper callback that ensures we return to the filter menu
+    const filterCallback = () => this.showFilterRows(sheet, schema, returnCallback)
+    await this.showFilteredRowList(sheet, schema, filter, choice, jmesQuery || '', filterCallback)
   }
 
 
