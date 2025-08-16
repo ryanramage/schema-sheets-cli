@@ -42,7 +42,24 @@ export class RowMenu extends BaseMenu {
       }
     ]
 
-    return await this.showMenu(title, choices, 'What would you like to do?')
+    const choice = await this.showMenu(title, choices, 'What would you like to do?')
+
+    switch (choice) {
+      case 'list-rows':
+        return this.showRowList(sheet, schema, this.show.bind(this))
+      case 'filter-rows':
+        return this.showFilterRows(sheet, schema, this.show.bind(this))
+      case 'add-row':
+        return this.showAddRow(sheet, schema, this.show.bind(this))
+      case 'ui-schema':
+        return this.showUISchemaMenu(sheet, schema, this.show.bind(this))
+      case 'manage-queries':
+        return this.showManageQueries(sheet, schema, this.show.bind(this))
+      case 'back':
+        return 'back'
+      default:
+        return choice
+    }
   }
 
   async showRowList(sheet, schema, returnCallback) {
