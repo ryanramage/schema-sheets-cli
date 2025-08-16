@@ -91,3 +91,118 @@ export function createRowChoices(rows) {
     }
   })
 }
+
+/**
+ * Create a dynamic table based on list view query results
+ */
+export function createDynamicTable(columns, maxColumnWidth = 30) {
+  const colWidths = columns.map(col => Math.min(col.length + 2, maxColumnWidth))
+  
+  return new Table({
+    head: columns,
+    colWidths: colWidths.length > 0 ? colWidths : [20, 60]
+  })
+}
+
+/**
+ * Add a row to dynamic table with list view data
+ */
+export function addDynamicRowToTable(table, listViewData, maxColumnWidth = 30) {
+  const values = Object.values(listViewData || {}).map(value => 
+    truncateValue(value, maxColumnWidth - 2)
+  )
+  table.push(values)
+}
+
+/**
+ * Truncate a value intelligently for display
+ */
+export function truncateValue(value, maxLength) {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  
+  const stringValue = String(value)
+  if (stringValue.length <= maxLength) {
+    return stringValue
+  }
+  
+  return stringValue.substring(0, maxLength - 3) + '...'
+}
+
+/**
+ * Apply a JMESPath query to transform row data for list view
+ */
+export async function applyListViewQuery(rows, queryText) {
+  try {
+    const jmespath = (await import('jmespath')).default
+    
+    const transformedRows = []
+    
+    for (const row of rows) {
+      try {
+        const result = jmespath.search(row.json, queryText)
+        if (result && typeof result === 'object' && !Array.isArray(result)) {
+          transformedRows.push({
+            rowId: row.rowId,
+            listViewData: result,
+            originalJson: row.json
+          })
+        } else {
+          // Fallback to original row if query doesn't return an object
+          transformedRows.push({
+            rowId: row.rowId,
+            listViewData: null,
+            originalJson: row.json
+          })
+        }
+      } catch (error) {
+        // Fallback to original row if query fails
+        transformedRows.push({
+          rowId: row.rowId,
+          listViewData: null,
+          originalJson: row.json
+        })
+      }
+    }
+    
+    return transformedRows
+  } catch (error) {
+    console.warn('Failed to apply list view query:', error.message)
+    // Return rows in fallback format
+    return rows.map(row => ({
+      rowId: row.rowId,
+      listViewData: null,
+      originalJson: row.json
+    }))
+  }
+}
+
+/**
+ * Create row choices for list view transformed data
+ */
+export function createListViewRowChoices(transformedRows) {
+  return transformedRows.map(row => {
+    if (row.listViewData) {
+      // Use list view data for display
+      const values = Object.values(row.listViewData)
+      const displayText = values.map(v => truncateValue(v, 20)).join(' | ')
+      const rowIdDisplay = (row.rowId || '').substring(0, 16)
+      return {
+        name: `${rowIdDisplay}... - ${displayText}`,
+        value: row.rowId,
+        description: 'View full JSON'
+      }
+    } else {
+      // Fallback to JSON snippet
+      const jsonString = JSON.stringify(row.originalJson || {})
+      const snippet = jsonString.substring(0, 40)
+      const rowIdDisplay = (row.rowId || '').substring(0, 16)
+      return {
+        name: `${rowIdDisplay}... - ${snippet}...`,
+        value: row.rowId,
+        description: 'View full JSON'
+      }
+    }
+  })
+}
