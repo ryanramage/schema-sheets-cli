@@ -483,14 +483,6 @@ export class SheetOperations {
           description: 'Skip JMESPath filtering'
         }
       )
-      
-      if (savedQueries.length > 0) {
-        choices.push({
-          name: '🗑️ Manage Saved Queries',
-          value: 'manage',
-          description: 'Delete or edit saved queries'
-        })
-      }
 
       const { select } = await import('@inquirer/prompts')
       const queryChoice = await select({
@@ -505,10 +497,6 @@ export class SheetOperations {
 
       if (queryChoice === 'none') {
         return ''
-      }
-
-      if (queryChoice === 'manage') {
-        return this.showManageQueries(sheet, schema)
       }
 
       if (queryChoice.startsWith('saved-')) {
@@ -551,72 +539,6 @@ export class SheetOperations {
     } catch (error) {
       console.error(chalk.red('Error loading queries:'), error.message)
       return ''
-    }
-  }
-
-  async showManageQueries(sheet, schema) {
-    console.clear()
-    console.log(chalk.blue.bold(`🗑️ Manage Saved Queries - Schema: ${schema.name}\n`))
-
-    try {
-      const savedQueries = await sheet.listQueries(schema.schemaId)
-      
-      if (savedQueries.length === 0) {
-        console.log(chalk.yellow('No saved queries found.'))
-        const { input } = await import('@inquirer/prompts')
-        await input({ message: 'Press Enter to continue...' })
-        return this.showQuerySelection(sheet, schema)
-      }
-
-      const choices = savedQueries.map(query => ({
-        name: `${query.name}${query.listView ? ' 📋' : ''} - ${query.JMESPathQuery}`,
-        value: query.queryId,
-        description: `Delete this query${query.listView ? ' (List View)' : ''}`
-      }))
-
-      choices.push({
-        name: chalk.gray('← Back to Query Selection'),
-        value: 'back'
-      })
-
-      const { select } = await import('@inquirer/prompts')
-      const choice = await select({
-        message: 'Select a query to delete:',
-        choices
-      })
-
-      if (choice === 'back') {
-        return this.showQuerySelection(sheet, schema)
-      }
-
-      const selectedQuery = savedQueries.find(q => q.queryId === choice)
-      if (selectedQuery) {
-        const { confirm } = await import('@inquirer/prompts')
-        const confirmDelete = await confirm({
-          message: `Delete query "${selectedQuery.name}"?`,
-          default: false
-        })
-
-        if (confirmDelete) {
-          try {
-            await sheet.deleteQuery(choice)
-            console.log(chalk.green(`✅ Query "${selectedQuery.name}" deleted!`))
-            const { input } = await import('@inquirer/prompts')
-            await input({ message: 'Press Enter to continue...' })
-          } catch (error) {
-            console.error(chalk.red('Error deleting query:'), error.message)
-            const { input } = await import('@inquirer/prompts')
-            await input({ message: 'Press Enter to continue...' })
-          }
-        }
-      }
-
-      return this.showManageQueries(sheet, schema)
-    } catch (error) {
-      console.error(chalk.red('Error managing queries:'), error.message)
-      const { input } = await import('@inquirer/prompts')
-      await input({ message: 'Press Enter to continue...' })
-      return this.showQuerySelection(sheet, schema)
     }
   }
 

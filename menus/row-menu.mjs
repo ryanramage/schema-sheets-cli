@@ -32,6 +32,11 @@ export class RowMenu extends BaseMenu {
         description: 'Manage UI schemas for this schema'
       },
       {
+        name: '🔍 Manage Queries',
+        value: 'manage-queries',
+        description: 'Create, edit, and delete saved queries for this schema'
+      },
+      {
         name: chalk.gray('← Back to Main Menu'),
         value: 'back'
       }
@@ -696,6 +701,434 @@ export class RowMenu extends BaseMenu {
       console.error(chalk.red('Error deleting UI schema:'), error.message)
       await this.waitForContinue()
       return this.showUISchemaDetail(sheet, schema, uiSchema, returnCallback)
+    }
+  }
+
+  async showManageQueries(sheet, schema, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`🔍 Manage Queries - Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
+
+    try {
+      const savedQueries = await sheet.listQueries(schema.schemaId)
+      
+      const choices = []
+      
+      if (savedQueries.length > 0) {
+        choices.push({
+          name: chalk.gray('--- Existing Queries ---'),
+          value: 'separator-existing',
+          disabled: ''
+        })
+        
+        savedQueries.forEach(query => {
+          choices.push({
+            name: `${query.listView ? '📋' : '💾'} ${query.name}`,
+            value: `existing-${query.queryId}`,
+            description: `${query.JMESPathQuery}${query.listView ? ' (List View)' : ''}`
+          })
+        })
+        
+        choices.push({
+          name: chalk.gray('--- Actions ---'),
+          value: 'separator-actions',
+          disabled: ''
+        })
+      }
+      
+      choices.push(
+        {
+          name: '➕ Create New Query',
+          value: 'create-new',
+          description: 'Create and save a new JMESPath query'
+        },
+        {
+          name: chalk.gray('← Back to Row Menu'),
+          value: 'back'
+        }
+      )
+
+      const choice = await select({
+        message: 'Select an option:',
+        choices
+      })
+
+      if (choice.startsWith('separator-')) {
+        return this.showManageQueries(sheet, schema, returnCallback)
+      }
+
+      if (choice === 'back') {
+        return returnCallback(sheet, schema)
+      }
+
+      if (choice === 'create-new') {
+        return this.showCreateQuery(sheet, schema, returnCallback)
+      }
+
+      if (choice.startsWith('existing-')) {
+        const queryId = choice.replace('existing-', '')
+        const selectedQuery = savedQueries.find(q => q.queryId === queryId)
+        return this.showQueryDetail(sheet, schema, selectedQuery, returnCallback)
+      }
+
+    } catch (error) {
+      console.error(chalk.red('Error loading queries:'), error.message)
+      await this.waitForContinue()
+      return returnCallback(sheet, schema)
+    }
+  }
+
+  async showCreateQuery(sheet, schema, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`➕ Create New Query - Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
+
+    console.log(chalk.gray('Enter JMESPath query to filter and transform data'))
+    console.log(chalk.gray('Examples:'))
+    console.log(chalk.gray('  • title                           - Simple property'))
+    console.log(chalk.gray('  • status == `open`                - Filter by status'))
+    console.log(chalk.gray('  • [].{title: title, status: status} - List view format'))
+    console.log('')
+
+    try {
+      const queryText = await input({
+        message: 'JMESPath query:',
+        validate: (input) => {
+          if (!input.trim()) return 'Query is required'
+          return true
+        }
+      })
+
+      const queryName = await input({
+        message: 'Enter name for this query:',
+        validate: (input) => {
+          if (!input.trim()) return 'Query name is required'
+          return true
+        }
+      })
+
+      // Analyze the query to see if it's suitable for list view
+      const analysis = this.sheetOps.analyzeListViewQuery(queryText.trim())
+      let isListView = false
+
+      if (analysis.isValidListView) {
+        console.log(chalk.gray(`\nDetected list view query with columns: ${analysis.columns.join(', ')}`))
+        
+        // Check for existing list view queries
+        const existingListView = await this.sheetOps.checkExistingListView(sheet, schema)
+        
+        if (existingListView) {
+          console.log(chalk.yellow(`\nWarning: Schema already has a list view query: "${existingListView.name}"`))
+          const replaceExisting = await confirm({
+            message: 'Replace the existing list view query with this one?',
+            default: false
+          })
+          
+          if (replaceExisting) {
+            // Remove list view flag from existing query
+            try {
+              await sheet.updateQuery(existingListView.queryId, existingListView.name, existingListView.JMESPathQuery, false)
+              console.log(chalk.gray(`Removed list view flag from "${existingListView.name}"`))
+              isListView = true
+            } catch (error) {
+              console.log(chalk.yellow(`Warning: Could not update existing query: ${error.message}`))
+            }
+          }
+        } else {
+          isListView = await confirm({
+            message: 'Use this query as the list view for displaying rows?',
+            default: true
+          })
+        }
+      }
+
+      await sheet.addQuery(schema.schemaId, queryName.trim(), queryText.trim(), isListView)
+      console.log(chalk.green(`✅ Query "${queryName.trim()}" created successfully!`))
+      if (isListView) {
+        console.log(chalk.green(`✅ Set as list view query`))
+      }
+      
+      await this.waitForContinue()
+      return this.showManageQueries(sheet, schema, returnCallback)
+
+    } catch (error) {
+      console.error(chalk.red('Error creating query:'), error.message)
+      await this.waitForContinue()
+      return this.showManageQueries(sheet, schema, returnCallback)
+    }
+  }
+
+  async showQueryDetail(sheet, schema, query, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`📄 Query Detail - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
+    console.log(chalk.gray(`Schema: ${schema.name}`))
+    console.log(chalk.gray(`Query: ${query.name}${query.listView ? ' 📋' : ''}`))
+    console.log(chalk.gray(`JMESPath: ${query.JMESPathQuery}`))
+    console.log(chalk.gray(`Query ID: ${query.queryId}\n`))
+
+    const choices = [
+      {
+        name: '🧪 Test Query',
+        value: 'test',
+        description: 'Test this query against current data'
+      },
+      {
+        name: '✏️ Edit Query',
+        value: 'edit',
+        description: 'Modify the query text or settings'
+      }
+    ]
+
+    if (!query.listView) {
+      choices.push({
+        name: '📋 Set as List View',
+        value: 'set-list-view',
+        description: 'Use this query for row list display'
+      })
+    } else {
+      choices.push({
+        name: '📄 Remove List View',
+        value: 'remove-list-view',
+        description: 'Stop using this query for row list display'
+      })
+    }
+
+    choices.push(
+      {
+        name: '🗑️ Delete Query',
+        value: 'delete',
+        description: 'Remove this query permanently'
+      },
+      {
+        name: chalk.gray('← Back to Manage Queries'),
+        value: 'back'
+      }
+    )
+
+    const choice = await select({
+      message: 'What would you like to do?',
+      choices
+    })
+
+    switch (choice) {
+      case 'test':
+        return this.showTestQuery(sheet, schema, query, returnCallback)
+      case 'edit':
+        return this.showEditQuery(sheet, schema, query, returnCallback)
+      case 'set-list-view':
+        return this.showSetListView(sheet, schema, query, returnCallback)
+      case 'remove-list-view':
+        return this.showRemoveListView(sheet, schema, query, returnCallback)
+      case 'delete':
+        return this.showDeleteQuery(sheet, schema, query, returnCallback)
+      case 'back':
+        return this.showManageQueries(sheet, schema, returnCallback)
+    }
+  }
+
+  async showTestQuery(sheet, schema, query, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`🧪 Test Query - ${query.name}\n`))
+    console.log(chalk.gray(`Query: ${query.JMESPathQuery}\n`))
+
+    try {
+      // Get some sample rows to test against
+      const rows = await sheet.list(schema.schemaId, {})
+      
+      if (rows.length === 0) {
+        console.log(chalk.yellow('No rows found to test against. Add some data first.'))
+        await this.waitForContinue()
+        return this.showQueryDetail(sheet, schema, query, returnCallback)
+      }
+
+      console.log(chalk.gray(`Testing against ${rows.length} row(s)...\n`))
+
+      // Test the query
+      const jmespath = (await import('jmespath')).default
+      const results = []
+      
+      for (let i = 0; i < Math.min(rows.length, 5); i++) { // Test first 5 rows
+        try {
+          const result = jmespath.search(rows[i].json, query.JMESPathQuery)
+          results.push({
+            rowId: rows[i].rowId.substring(0, 16) + '...',
+            result: result
+          })
+        } catch (error) {
+          results.push({
+            rowId: rows[i].rowId.substring(0, 16) + '...',
+            error: error.message
+          })
+        }
+      }
+
+      // Display results
+      results.forEach((result, index) => {
+        console.log(chalk.blue(`Row ${index + 1} (${result.rowId}):`))
+        if (result.error) {
+          console.log(chalk.red(`  Error: ${result.error}`))
+        } else {
+          console.log(`  Result: ${JSON.stringify(result.result, null, 2)}`)
+        }
+        console.log('')
+      })
+
+      await this.waitForContinue()
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
+
+    } catch (error) {
+      console.error(chalk.red('Error testing query:'), error.message)
+      await this.waitForContinue()
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
+    }
+  }
+
+  async showEditQuery(sheet, schema, query, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`✏️ Edit Query - ${query.name}\n`))
+
+    try {
+      const newQueryText = await input({
+        message: 'JMESPath query:',
+        default: query.JMESPathQuery,
+        validate: (input) => {
+          if (!input.trim()) return 'Query is required'
+          return true
+        }
+      })
+
+      const newQueryName = await input({
+        message: 'Query name:',
+        default: query.name,
+        validate: (input) => {
+          if (!input.trim()) return 'Query name is required'
+          return true
+        }
+      })
+
+      await sheet.updateQuery(query.queryId, newQueryName.trim(), newQueryText.trim(), query.listView)
+      console.log(chalk.green(`✅ Query "${newQueryName.trim()}" updated successfully!`))
+      
+      await this.waitForContinue()
+      return this.showManageQueries(sheet, schema, returnCallback)
+
+    } catch (error) {
+      console.error(chalk.red('Error updating query:'), error.message)
+      await this.waitForContinue()
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
+    }
+  }
+
+  async showSetListView(sheet, schema, query, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`📋 Set as List View - ${query.name}\n`))
+
+    // Check if query is suitable for list view
+    const analysis = this.sheetOps.analyzeListViewQuery(query.JMESPathQuery)
+    
+    if (!analysis.isValidListView) {
+      console.log(chalk.yellow(`⚠️ This query may not be suitable for list view display.`))
+      console.log(chalk.gray(`Reason: ${analysis.reason}\n`))
+      
+      const proceed = await confirm({
+        message: 'Set as list view anyway?',
+        default: false
+      })
+      
+      if (!proceed) {
+        return this.showQueryDetail(sheet, schema, query, returnCallback)
+      }
+    } else {
+      console.log(chalk.green(`✅ Query is suitable for list view with columns: ${analysis.columns.join(', ')}\n`))
+    }
+
+    try {
+      // Check for existing list view
+      const existingListView = await this.sheetOps.checkExistingListView(sheet, schema)
+      
+      if (existingListView && existingListView.queryId !== query.queryId) {
+        console.log(chalk.yellow(`Warning: Schema already has a list view query: "${existingListView.name}"`))
+        const replaceExisting = await confirm({
+          message: 'Replace the existing list view query with this one?',
+          default: false
+        })
+        
+        if (!replaceExisting) {
+          return this.showQueryDetail(sheet, schema, query, returnCallback)
+        }
+        
+        // Remove list view flag from existing query
+        await sheet.updateQuery(existingListView.queryId, existingListView.name, existingListView.JMESPathQuery, false)
+        console.log(chalk.gray(`Removed list view flag from "${existingListView.name}"`))
+      }
+
+      await sheet.updateQuery(query.queryId, query.name, query.JMESPathQuery, true)
+      console.log(chalk.green(`✅ "${query.name}" is now the list view query!`))
+      
+      await this.waitForContinue()
+      return this.showManageQueries(sheet, schema, returnCallback)
+
+    } catch (error) {
+      console.error(chalk.red('Error setting list view:'), error.message)
+      await this.waitForContinue()
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
+    }
+  }
+
+  async showRemoveListView(sheet, schema, query, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`📄 Remove List View - ${query.name}\n`))
+
+    const confirmRemove = await confirm({
+      message: 'Remove list view designation from this query?',
+      default: true
+    })
+
+    if (!confirmRemove) {
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
+    }
+
+    try {
+      await sheet.updateQuery(query.queryId, query.name, query.JMESPathQuery, false)
+      console.log(chalk.green(`✅ List view designation removed from "${query.name}"`))
+      
+      await this.waitForContinue()
+      return this.showManageQueries(sheet, schema, returnCallback)
+
+    } catch (error) {
+      console.error(chalk.red('Error removing list view:'), error.message)
+      await this.waitForContinue()
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
+    }
+  }
+
+  async showDeleteQuery(sheet, schema, query, returnCallback) {
+    console.clear()
+    console.log(chalk.blue.bold(`🗑️ Delete Query - ${query.name}\n`))
+    console.log(chalk.yellow('⚠️ This action cannot be undone!'))
+    console.log(chalk.gray(`Query: ${query.name}${query.listView ? ' (List View)' : ''}`))
+    console.log(chalk.gray(`JMESPath: ${query.JMESPathQuery}\n`))
+
+    const confirmDelete = await confirm({
+      message: 'Are you sure you want to delete this query?',
+      default: false
+    })
+
+    if (!confirmDelete) {
+      console.log(chalk.yellow('Deletion cancelled'))
+      await this.waitForContinue()
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
+    }
+
+    try {
+      await sheet.deleteQuery(query.queryId)
+      console.log(chalk.green(`✅ Query "${query.name}" deleted successfully`))
+      
+      await this.waitForContinue()
+      return this.showManageQueries(sheet, schema, returnCallback)
+
+    } catch (error) {
+      console.error(chalk.red('Error deleting query:'), error.message)
+      await this.waitForContinue()
+      return this.showQueryDetail(sheet, schema, query, returnCallback)
     }
   }
 }
