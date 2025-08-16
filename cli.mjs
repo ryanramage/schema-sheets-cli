@@ -155,6 +155,15 @@ async function showRoomLobby() {
     case 'join-room':
       await showJoinRoom()
       break
+    case 'setup-signing':
+      const success = await roomLobbyMenu.showSetupSigning()
+      if (success) {
+        // Return to lobby to show updated menu (without setup signing option)
+        return showRoomLobby()
+      } else {
+        return showRoomLobby()
+      }
+      break
     case 'exit':
       console.log(chalk.green('Goodbye! 👋'))
       process.exit(0)

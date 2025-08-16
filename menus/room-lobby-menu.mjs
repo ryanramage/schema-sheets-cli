@@ -1,6 +1,9 @@
 import chalk from 'chalk'
 import z32 from 'z32'
+import Id from 'hypercore-id-encoding'
+import { password } from '@inquirer/prompts'
 import { BaseMenu } from './base-menu.mjs'
+import { signingConfigExists, createSigningConfig } from '../config/signing-utils.mjs'
 
 export class RoomLobbyMenu extends BaseMenu {
   constructor(roomManager, sheetOps, lobby) {
@@ -13,6 +16,7 @@ export class RoomLobbyMenu extends BaseMenu {
     console.log(chalk.gray('Manage your rooms and join schema sheets\n'))
 
     const rooms = await this.lobby.listRooms()
+    const hasSigningConfig = signingConfigExists()
     
     const choices = [
       {
@@ -26,6 +30,15 @@ export class RoomLobbyMenu extends BaseMenu {
         description: 'Join an existing room using a room link'
       }
     ]
+
+    // Add signing setup option if not configured
+    if (!hasSigningConfig) {
+      choices.push({
+        name: '🔐 Setup Signing',
+        value: 'setup-signing',
+        description: 'Configure your Keet identity for data signing'
+      })
+    }
 
     // Add existing rooms to the menu
     if (rooms.length > 0) {
@@ -60,6 +73,50 @@ export class RoomLobbyMenu extends BaseMenu {
     }
 
     return { choice, rooms }
+  }
+
+  async showSetupSigning() {
+    const title = '🔐 Setup Signing'
+    console.log(chalk.gray('Configure your Keet identity for signing data\n'))
+
+    try {
+      const keetUsername = await this.getInput('Enter your Keet username:', {
+        validate: (input) => {
+          if (!input.trim()) return 'Keet username is required'
+          return true
+        }
+      })
+
+      console.log(chalk.yellow('\n⚠️  Your mnemonic will not be stored, only used to derive keys'))
+      const mnemonic = await password({
+        message: 'Enter your Keet mnemonic (hidden input):',
+        validate: (input) => {
+          if (!input.trim()) return 'Mnemonic is required'
+          // Basic validation - should be multiple words
+          const words = input.trim().split(/\s+/)
+          if (words.length < 24) return 'Mnemonic should be at least 24 words'
+          return true
+        }
+      })
+
+      console.log(chalk.blue('\n🔄 Generating keys and proof...'))
+      
+      const signingConfig = await createSigningConfig(keetUsername, mnemonic)
+      
+      if (signingConfig) {
+        console.log(chalk.green('✅ Signing configuration created successfully!'))
+        console.log(chalk.gray(`Identity: ${Id.normalize(signingConfig.identityPublicKey).substring(0, 16)}...`))
+      } else {
+        throw new Error('Failed to create signing configuration')
+      }
+
+      await this.waitForContinue()
+      return true
+    } catch (error) {
+      console.error(chalk.red('Error setting up signing:'), error.message)
+      await this.waitForContinue()
+      return false
+    }
   }
 
   async showCreateRoom() {
