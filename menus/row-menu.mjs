@@ -67,7 +67,16 @@ export class RowMenu extends BaseMenu {
     console.log(chalk.blue.bold(`📋 Rows in Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
     try {
-      const rows = await sheet.list(schema.schemaId, {})
+      // Check for list view query to use at the schema-sheets level
+      const listViewQuery = await this.sheetOps.getListViewQuery(sheet, schema)
+      const listOptions = {}
+      
+      if (listViewQuery) {
+        console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
+        listOptions.query = listViewQuery.JMESPathQuery
+      }
+
+      const rows = await sheet.list(schema.schemaId, listOptions)
       
       if (rows.length === 0) {
         console.log(chalk.yellow('No rows found. Add one first!'))
@@ -75,33 +84,27 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      // Check for list view query
-      const listViewQuery = await this.sheetOps.getListViewQuery(sheet, schema)
-      let transformedRows = rows
+      // Create table and choices based on whether we have list view data
       let table
       let choices
 
       if (listViewQuery) {
-        console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
-        
-        // Apply list view transformation
-        const { applyListViewQuery, createDynamicTable, addDynamicRowToTable, createListViewRowChoices } = await import('../utils/display.mjs')
-        transformedRows = await applyListViewQuery(rows, listViewQuery.JMESPathQuery)
-        
-        // Check if we have valid list view data
-        const hasListViewData = transformedRows.some(row => row.listViewData !== null)
+        // Check if the list view query returned structured data
+        const hasListViewData = rows.some(row => row.json && typeof row.json === 'object' && !Array.isArray(row.json))
         
         if (hasListViewData) {
-          // Get columns from the first successful transformation
-          const sampleData = transformedRows.find(row => row.listViewData !== null)?.listViewData
+          // Get columns from the first row's data
+          const sampleData = rows.find(row => row.json && typeof row.json === 'object')?.json
           const columns = sampleData ? Object.keys(sampleData) : []
           
           if (columns.length > 0) {
-            // Create dynamic table
+            // Create dynamic table for list view
+            const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
             table = createDynamicTable(columns)
-            transformedRows.forEach(row => {
-              if (row.listViewData) {
-                addDynamicRowToTable(table, row.listViewData)
+            
+            rows.forEach(row => {
+              if (row.json && typeof row.json === 'object') {
+                addDynamicRowToTable(table, row.json)
               } else {
                 // Add fallback row for failed transformations
                 const fallbackData = {}
@@ -110,23 +113,48 @@ export class RowMenu extends BaseMenu {
               }
             })
             
-            choices = createListViewRowChoices(transformedRows)
+            // Create choices for list view
+            choices = rows.map(row => {
+              if (row.json && typeof row.json === 'object') {
+                const values = Object.values(row.json)
+                const displayText = values.map(v => {
+                  const stringValue = String(v || '')
+                  return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
+                }).join(' | ')
+                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                return {
+                  name: `${rowIdDisplay}... - ${displayText}`,
+                  value: row.rowId,
+                  description: 'View full JSON'
+                }
+              } else {
+                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                return {
+                  name: `${rowIdDisplay}... - (error)`,
+                  value: row.rowId,
+                  description: 'View full JSON'
+                }
+              }
+            })
           } else {
             // Fallback to regular table
             console.log(chalk.yellow('List view query returned no columns, falling back to JSON snippets\n'))
+            const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
             table = createRowTable()
             rows.forEach(row => addRowToTable(table, row))
             choices = createRowChoices(rows)
           }
         } else {
           // Fallback to regular table
-          console.log(chalk.yellow('List view query failed on all rows, falling back to JSON snippets\n'))
+          console.log(chalk.yellow('List view query failed, falling back to JSON snippets\n'))
+          const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
           table = createRowTable()
           rows.forEach(row => addRowToTable(table, row))
           choices = createRowChoices(rows)
         }
       } else {
         // No list view query, use regular table
+        const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
         table = createRowTable()
         rows.forEach(row => addRowToTable(table, row))
         choices = createRowChoices(rows)
@@ -275,7 +303,25 @@ export class RowMenu extends BaseMenu {
     console.log('')
 
     try {
-      const rows = await sheet.list(schema.schemaId, filter)
+      // Use the provided jmesQuery if available, otherwise check for list view query
+      let queryToUse = jmesQuery
+      let listViewQuery = null
+      
+      if (!jmesQuery) {
+        listViewQuery = await this.sheetOps.getListViewQuery(sheet, schema)
+        if (listViewQuery) {
+          queryToUse = listViewQuery.JMESPathQuery
+          console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
+        }
+      }
+
+      // Add query to filter if we have one
+      const listOptions = { ...filter }
+      if (queryToUse) {
+        listOptions.query = queryToUse
+      }
+
+      const rows = await sheet.list(schema.schemaId, listOptions)
       
       if (rows.length === 0) {
         console.log(chalk.yellow('No rows found in the selected date range.'))
@@ -283,33 +329,27 @@ export class RowMenu extends BaseMenu {
         return this.showFilterRows(sheet, schema, returnCallback)
       }
 
-      // Check for list view query (only if no JMESPath filter is already applied)
-      const listViewQuery = !jmesQuery ? await this.sheetOps.getListViewQuery(sheet, schema) : null
-      let transformedRows = rows
+      // Create table and choices based on whether we used a list view query
       let table
       let choices
 
-      if (listViewQuery) {
-        console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
-        
-        // Apply list view transformation
-        const { applyListViewQuery, createDynamicTable, addDynamicRowToTable, createListViewRowChoices } = await import('../utils/display.mjs')
-        transformedRows = await applyListViewQuery(rows, listViewQuery.JMESPathQuery)
-        
-        // Check if we have valid list view data
-        const hasListViewData = transformedRows.some(row => row.listViewData !== null)
+      if (listViewQuery && !jmesQuery) {
+        // Check if the list view query returned structured data
+        const hasListViewData = rows.some(row => row.json && typeof row.json === 'object' && !Array.isArray(row.json))
         
         if (hasListViewData) {
-          // Get columns from the first successful transformation
-          const sampleData = transformedRows.find(row => row.listViewData !== null)?.listViewData
+          // Get columns from the first row's data
+          const sampleData = rows.find(row => row.json && typeof row.json === 'object')?.json
           const columns = sampleData ? Object.keys(sampleData) : []
           
           if (columns.length > 0) {
-            // Create dynamic table
+            // Create dynamic table for list view
+            const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
             table = createDynamicTable(columns)
-            transformedRows.forEach(row => {
-              if (row.listViewData) {
-                addDynamicRowToTable(table, row.listViewData)
+            
+            rows.forEach(row => {
+              if (row.json && typeof row.json === 'object') {
+                addDynamicRowToTable(table, row.json)
               } else {
                 // Add fallback row for failed transformations
                 const fallbackData = {}
@@ -318,23 +358,48 @@ export class RowMenu extends BaseMenu {
               }
             })
             
-            choices = createListViewRowChoices(transformedRows)
+            // Create choices for list view
+            choices = rows.map(row => {
+              if (row.json && typeof row.json === 'object') {
+                const values = Object.values(row.json)
+                const displayText = values.map(v => {
+                  const stringValue = String(v || '')
+                  return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
+                }).join(' | ')
+                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                return {
+                  name: `${rowIdDisplay}... - ${displayText}`,
+                  value: row.rowId,
+                  description: 'View full JSON'
+                }
+              } else {
+                const rowIdDisplay = (row.rowId || '').substring(0, 16)
+                return {
+                  name: `${rowIdDisplay}... - (error)`,
+                  value: row.rowId,
+                  description: 'View full JSON'
+                }
+              }
+            })
           } else {
             // Fallback to regular table
             console.log(chalk.yellow('List view query returned no columns, falling back to JSON snippets\n'))
+            const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
             table = createRowTable()
             rows.forEach(row => addRowToTable(table, row))
             choices = createRowChoices(rows)
           }
         } else {
           // Fallback to regular table
-          console.log(chalk.yellow('List view query failed on all rows, falling back to JSON snippets\n'))
+          console.log(chalk.yellow('List view query failed, falling back to JSON snippets\n'))
+          const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
           table = createRowTable()
           rows.forEach(row => addRowToTable(table, row))
           choices = createRowChoices(rows)
         }
       } else {
-        // No list view query or JMESPath filter already applied, use regular table
+        // No list view query or custom JMESPath filter already applied, use regular table
+        const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
         table = createRowTable()
         rows.forEach(row => addRowToTable(table, row))
         choices = createRowChoices(rows)
