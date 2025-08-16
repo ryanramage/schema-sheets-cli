@@ -327,7 +327,7 @@ export class RowMenu extends BaseMenu {
       if (rows.length === 0) {
         console.log(chalk.yellow('No rows found in the selected date range.'))
         await this.waitForContinue()
-        return this.showFilterRows(sheet, schema, returnCallback)
+        return returnCallback(sheet, schema)
       }
 
       // Create table and choices based on whether we used a list view query
@@ -419,7 +419,7 @@ export class RowMenu extends BaseMenu {
       })
 
       if (choice === 'back') {
-        return this.showFilterRows(sheet, schema, returnCallback)
+        return returnCallback(sheet, schema)
       }
 
       // Get the full row data since list view query may have filtered the JSON
@@ -428,7 +428,7 @@ export class RowMenu extends BaseMenu {
     } catch (error) {
       console.error(chalk.red('Error loading filtered rows:'), error.message)
       await this.waitForContinue()
-      return this.showFilterRows(sheet, schema, returnCallback)
+      return returnCallback(sheet, schema)
     }
   }
 
@@ -441,12 +441,8 @@ export class RowMenu extends BaseMenu {
     
     await displayJsonWithFallback(row.json, 'Full JSON')
     
-    // Return to the appropriate list view
-    if (returnTo === 'filter') {
-      return this.showFilterRows(sheet, schema, returnCallback)
-    } else {
-      return this.showRowList(sheet, schema, returnCallback)
-    }
+    // Always return to the main row menu to avoid callback chain issues
+    return returnCallback(sheet, schema)
   }
 
   async showAddRow(sheet, schema, returnCallback) {
