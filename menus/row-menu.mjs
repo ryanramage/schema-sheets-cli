@@ -1067,6 +1067,10 @@ export class RowMenu extends BaseMenu {
   async showEditQuery(sheet, schema, query, returnCallback) {
     console.clear()
     console.log(chalk.blue.bold(`✏️ Edit Query - ${query.name}\n`))
+    
+    console.log(chalk.gray('Current query:'))
+    console.log(chalk.cyan(`  ${query.JMESPathQuery}\n`))
+    console.log(chalk.gray('Enter new query text (or press Enter to keep current):'))
 
     try {
       const newQueryText = await input({
@@ -1078,6 +1082,7 @@ export class RowMenu extends BaseMenu {
         }
       })
 
+      console.log(chalk.gray(`\nCurrent name: ${query.name}`))
       const newQueryName = await input({
         message: 'Query name:',
         default: query.name,
