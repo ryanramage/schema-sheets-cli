@@ -7,6 +7,7 @@ import { getDateRanges, formatDateRange } from '../utils/date-filters.mjs'
 import { displayJsonWithFallback, createRowTable, addRowToTable, createRowChoices } from '../utils/display.mjs'
 import { signingConfigExists, loadSigningConfig } from '../config/signing-utils.mjs'
 import b4a from 'b4a'
+import IdentityKey from 'keet-identity-key'
 
 export class RowMenu extends BaseMenu {
   async signRowIfConfigured(sheet, schema, rowId, rowData) {
@@ -17,7 +18,7 @@ export class RowMenu extends BaseMenu {
       }
 
       const signingConfig = loadSigningConfig()
-      if (!signingConfig || !signingConfig.deviceKeyPair || !signingConfig.deviceProof) {
+      if (!signingConfig || !signingConfig.devicePublicKey || !signingConfig.deviceSecretKey || !signingConfig.bootstrapProof) {
         console.log(chalk.yellow('⚠️ Signing configuration incomplete. Please run setup signing again.'))
         return false
       }
@@ -33,22 +34,25 @@ export class RowMenu extends BaseMenu {
       }
 
       console.log(chalk.cyan('Signing row...'))
-
-      // Import IdentityKey dynamically
-      const IdentityKey = (await import('hypercore-identity-key')).default
+      console.log(rowData)
 
       // Get the row data as a buffer for signing
-      const rowBuffer = b4a.from(JSON.stringify(rowData))
+      const message = b4a.from(JSON.stringify(rowData))
+      const keyPair = { publicKey: signingConfig.devicePublicKey, secretKey: signingConfig.deviceSecretKey}
+      console.log('keyPair', keyPair)
+      console.log('proof', signingConfig.bootstrapProof)
 
       // Create attestation proof using stored device keypair and proof
       const proof = IdentityKey.attestData(
-        rowBuffer, 
-        signingConfig.deviceKeyPair, 
-        signingConfig.deviceProof
+        message, 
+        keyPair,
+        signingConfig.bootstrapProof
       )
+      console.log('the proof', proof)
+      console.log('the rowId', rowId)
 
       // Submit the attestation to the sheet
-      await sheet.addRowAttestation(rowId, proof)
+      await sheet.addRowAttestation(rowId, proof, signingConfig.keetUsername)
 
       console.log(chalk.green('✅ Row signed successfully!'))
       return true
