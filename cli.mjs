@@ -140,7 +140,7 @@ async function showRowMenu(sheet, schema) {
       await rowMenu.showUISchemaMenu(sheet, schema, showRowMenu)
       break
     case 'back':
-      return showMainMenu(sheet)
+      return await showMainMenu(sheet)
   }
 }
 
