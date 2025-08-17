@@ -98,7 +98,15 @@ export class RowMenu extends BaseMenu {
 
       // Get the full row data and show actions menu
       const fullRow = await sheet.getRow(schema.schemaId, selectedRowId)
-      await this.showRowActions(sheet, schema, fullRow, returnCallback)
+      
+      // Create filter context to remember current filter state
+      const filterContext = {
+        filter: listOptions,
+        filterType,
+        jmesQuery
+      }
+      
+      await this.showRowActions(sheet, schema, fullRow, returnCallback, filterContext)
     } catch (error) {
       console.error(chalk.red('Error loading rows:'), error.message)
       await this.waitForContinue()
@@ -274,7 +282,7 @@ export class RowMenu extends BaseMenu {
     }
   }
 
-  async showRowActions(sheet, schema, row, returnCallback) {
+  async showRowActions(sheet, schema, row, returnCallback, filterContext = null) {
     const { showRowActionsMenu, displayJsonWithFallback, copyToClipboard } = await import('../utils/display.mjs')
     
     while (true) {
@@ -315,9 +323,17 @@ export class RowMenu extends BaseMenu {
           break
           
         case 'back':
+          // If we have filter context, return to the filtered view
+          if (filterContext) {
+            return this.showFilteredRowList(sheet, schema, filterContext.filter, filterContext.filterType, filterContext.jmesQuery, returnCallback)
+          }
           return returnCallback(sheet, schema)
           
         default:
+          // If we have filter context, return to the filtered view
+          if (filterContext) {
+            return this.showFilteredRowList(sheet, schema, filterContext.filter, filterContext.filterType, filterContext.jmesQuery, returnCallback)
+          }
           return returnCallback(sheet, schema)
       }
     }
