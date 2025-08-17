@@ -17,7 +17,8 @@ export class BaseMenu {
 
     return await select({
       message,
-      choices
+      choices,
+      pageSize: Math.min(choices.length, process.stdout.rows - 10) // Use most of terminal height
     })
   }
 
