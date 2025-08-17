@@ -361,11 +361,7 @@ export class RowMenu extends BaseMenu {
           break
           
         case 'signatures':
-          console.clear()
-          console.log(chalk.blue.bold(`🔏 Row Signatures - Coming Soon\n`))
-          console.log(chalk.yellow('Row signature functionality will be implemented in a future update.'))
-          await this.waitForContinue()
-          // Continue the loop to show actions menu again
+          await this.showRowSignatures(sheet, schema, row, returnCallback, filterContext)
           break
           
         case 'copy':
@@ -1178,6 +1174,70 @@ export class RowMenu extends BaseMenu {
       console.error(chalk.red('Error deleting query:'), error.message)
       await this.waitForContinue()
       return this.showQueryDetail(sheet, schema, query, returnCallback)
+    }
+  }
+
+  async showRowSignatures(sheet, schema, row, returnCallback, filterContext = null) {
+    console.clear()
+    console.log(chalk.blue.bold(`🔏 Row Signatures - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
+    console.log(chalk.cyan(`Schema: ${schema.name}`))
+    console.log(chalk.cyan(`Row UUID: ${row.uuid}`))
+    console.log(chalk.cyan(`Created: ${new Date(row.time).toLocaleString()}\n`))
+
+    try {
+      // Get all attestations for this row
+      const attestations = await sheet.listRowAttestations(row.uuid)
+      
+      if (attestations.length === 0) {
+        console.log(chalk.yellow('No signatures found for this row.'))
+        await this.waitForContinue()
+        return this.showRowActions(sheet, schema, row, returnCallback, filterContext)
+      }
+
+      console.log(chalk.cyan(`Found ${attestations.length} signature(s):\n`))
+
+      // Import required modules for verification
+      const IdentityKey = (await import('keet-identity-key')).default
+      const Id = (await import('hypercore-id-encoding')).default
+      const b4a = (await import('b4a')).default
+
+      // Prepare the message for verification (same as what was signed)
+      const message = b4a.from(JSON.stringify(row.json))
+
+      // Display each attestation with verification status
+      for (let i = 0; i < attestations.length; i++) {
+        const attestation = attestations[i]
+        console.log(chalk.blue(`Signature ${i + 1}:`))
+        console.log(chalk.cyan(`  Time: ${new Date(attestation.time).toLocaleString()}`))
+        
+        if (attestation.keetUsername) {
+          console.log(chalk.cyan(`  Keet Username: ${attestation.keetUsername}`))
+        }
+
+        // Verify the attestation
+        try {
+          const messageInfo = IdentityKey.verify(attestation.proof, message)
+          
+          if (messageInfo) {
+            console.log(chalk.green(`  Status: ✓ Valid signature`))
+            console.log(chalk.cyan(`  Identity: ${Id.encode(messageInfo.identityPublicKey)}`))
+          } else {
+            console.log(chalk.red(`  Status: ✗ Invalid signature`))
+          }
+        } catch (error) {
+          console.log(chalk.red(`  Status: ✗ Verification error: ${error.message}`))
+        }
+        
+        console.log('') // Empty line between signatures
+      }
+
+      await this.waitForContinue()
+      return this.showRowActions(sheet, schema, row, returnCallback, filterContext)
+
+    } catch (error) {
+      console.error(chalk.red('Error loading row signatures:'), error.message)
+      await this.waitForContinue()
+      return this.showRowActions(sheet, schema, row, returnCallback, filterContext)
     }
   }
 }
