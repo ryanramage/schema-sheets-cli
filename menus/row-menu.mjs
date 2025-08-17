@@ -98,15 +98,7 @@ export class RowMenu extends BaseMenu {
 
       // Get the full row data and show actions menu
       const fullRow = await sheet.getRow(schema.schemaId, selectedRowId)
-      
-      // Create filter context to remember current filter state
-      const filterContext = {
-        filter,
-        filterType,
-        jmesQuery
-      }
-      
-      await this.showRowActions(sheet, schema, fullRow, returnCallback, filterContext)
+      await this.showRowActions(sheet, schema, fullRow, returnCallback)
     } catch (error) {
       console.error(chalk.red('Error loading rows:'), error.message)
       await this.waitForContinue()
@@ -274,7 +266,15 @@ export class RowMenu extends BaseMenu {
 
       // Get the full row data and show actions menu
       const fullRow = await sheet.getRow(schema.schemaId, selectedRowId)
-      await this.showRowActions(sheet, schema, fullRow, returnCallback)
+      
+      // Create filter context to remember current filter state
+      const filterContext = {
+        filter,
+        filterType,
+        jmesQuery
+      }
+      
+      await this.showRowActions(sheet, schema, fullRow, returnCallback, filterContext)
     } catch (error) {
       console.error(chalk.red('Error loading filtered rows:'), error.message)
       await this.waitForContinue()
