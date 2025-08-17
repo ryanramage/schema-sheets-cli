@@ -279,35 +279,6 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
     return null
   }
 
-  // Show table first if we have structured data
-  if (listViewQuery) {
-    const analysis = analyzeQueryResults(rows, listViewQuery.JMESPathQuery)
-    
-    if (analysis.canShowColumns) {
-      // Display the table with columns
-      const table = createDynamicTable(analysis.columns)
-      
-      rows.forEach(row => {
-        if (row.json && typeof row.json === 'object') {
-          addDynamicRowToTable(table, row.json)
-        } else {
-          // Add fallback row for failed transformations
-          const fallbackData = {}
-          analysis.columns.forEach(col => { fallbackData[col] = '(error)' })
-          addDynamicRowToTable(table, fallbackData)
-        }
-      })
-      
-      console.log(table.toString())
-      console.log('')
-    } else {
-      // Show reason why we can't display columns
-      if (analysis.reason) {
-        console.log(chalk.yellow(`${analysis.reason}, showing JSON snippets\n`))
-      }
-    }
-  }
-
   // Create choices for selection
   let choices
 
@@ -342,6 +313,9 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
       })
     } else {
       // Fallback to JSON snippet display
+      if (analysis.reason) {
+        console.log(chalk.yellow(`${analysis.reason}, showing JSON snippets\n`))
+      }
       choices = createRowChoicesWithNumbers(rows)
     }
   } else {
