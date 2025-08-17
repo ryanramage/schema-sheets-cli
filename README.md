@@ -2,6 +2,10 @@
 
 tldr: trying to be a p2p form/sheets system.
 
+see it in action here:
+
+https://www.youtube.com/watch?v=iRd0gT9Wv7I
+
 A peer-to-peer multiwriter room system for collaborative schema-based data entry. Create or join rooms to share and manage structured JSON data with real-time synchronization across all participants.
 
 ## Usage
