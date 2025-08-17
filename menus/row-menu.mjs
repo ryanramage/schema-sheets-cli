@@ -84,90 +84,21 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      // Analyze the list view query to determine if we can show nice columns
-      let table
-      let choices
+      // Use interactive row selection
+      const { displayRowsInteractively } = await import('../utils/display.mjs')
+      const selectedRowId = await displayRowsInteractively(
+        rows, 
+        listViewQuery, 
+        `Select a row (${rows.length} total):`
+      )
 
-      if (listViewQuery) {
-        const { analyzeQueryResults } = await import('../utils/display.mjs')
-        const analysis = analyzeQueryResults(rows, listViewQuery.JMESPathQuery)
-        
-        if (analysis.canShowColumns) {
-          // Create dynamic table for structured data
-          const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
-          table = createDynamicTable(analysis.columns)
-          
-          rows.forEach(row => {
-            if (row.json && typeof row.json === 'object') {
-              addDynamicRowToTable(table, row.json)
-            } else {
-              // Add fallback row for failed transformations
-              const fallbackData = {}
-              analysis.columns.forEach(col => { fallbackData[col] = '(error)' })
-              addDynamicRowToTable(table, fallbackData)
-            }
-          })
-          
-          // Create choices for structured data
-          choices = rows.map(row => {
-            if (row.json && typeof row.json === 'object') {
-              const values = Object.values(row.json)
-              const displayText = values.map(v => {
-                const stringValue = String(v || '')
-                return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
-              }).join(' | ')
-              const rowIdDisplay = (row.uuid || '').substring(0, 16)
-              return {
-                name: `${rowIdDisplay}... - ${displayText}`,
-                value: row.uuid,
-                description: 'View full JSON'
-              }
-            } else {
-              const rowIdDisplay = (row.uuid || '').substring(0, 16)
-              return {
-                name: `${rowIdDisplay}... - (error)`,
-                value: row.uuid,
-                description: 'View full JSON'
-              }
-            }
-          })
-        } else {
-          // Fallback to regular table
-          if (analysis.reason) {
-            console.log(chalk.yellow(`${analysis.reason}, showing JSON snippets\n`))
-          }
-          const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
-          table = createRowTable()
-          rows.forEach(row => addRowToTable(table, row))
-          choices = createRowChoices(rows)
-        }
-      } else {
-        // No list view query, use regular table
-        const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
-        table = createRowTable()
-        rows.forEach(row => addRowToTable(table, row))
-        choices = createRowChoices(rows)
-      }
-
-      console.log(table.toString())
-
-      choices.push({
-        name: chalk.gray('← Back to Row Menu'),
-        value: 'back'
-      })
-
-      const choice = await select({
-        message: 'Select a row to view full JSON:',
-        choices
-      })
-
-      if (choice === 'back') {
+      if (!selectedRowId) {
         return returnCallback(sheet, schema)
       }
 
-      // Get the full row data since list view query may have filtered the JSON
-      const fullRow = await sheet.getRow(schema.schemaId, choice)
-      await this.showRowDetail(sheet, schema, fullRow, 'list', returnCallback)
+      // Get the full row data and show actions menu
+      const fullRow = await sheet.getRow(schema.schemaId, selectedRowId)
+      await this.showRowActions(sheet, schema, fullRow, returnCallback)
     } catch (error) {
       console.error(chalk.red('Error loading rows:'), error.message)
       await this.waitForContinue()
@@ -321,92 +252,21 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      // Analyze the query being used to determine if we can show nice columns
-      const queryForAnalysis = jmesQuery || (listViewQuery ? listViewQuery.JMESPathQuery : null)
-      let table
-      let choices
+      // Use interactive row selection
+      const { displayRowsInteractively } = await import('../utils/display.mjs')
+      const selectedRowId = await displayRowsInteractively(
+        rows, 
+        listViewQuery, 
+        `Select a row (${rows.length} filtered):`
+      )
 
-      if (queryForAnalysis) {
-        // Check if any query (custom or list view) returned structured data suitable for columns
-        const { analyzeQueryResults } = await import('../utils/display.mjs')
-        const analysis = analyzeQueryResults(rows, queryForAnalysis)
-        
-        if (analysis.canShowColumns) {
-          // Create dynamic table for structured data
-          const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
-          table = createDynamicTable(analysis.columns)
-          
-          rows.forEach(row => {
-            if (row.json && typeof row.json === 'object') {
-              addDynamicRowToTable(table, row.json)
-            } else {
-              // Add fallback row for failed transformations
-              const fallbackData = {}
-              analysis.columns.forEach(col => { fallbackData[col] = '(error)' })
-              addDynamicRowToTable(table, fallbackData)
-            }
-          })
-          
-          // Create choices for structured data
-          choices = rows.map(row => {
-            if (row.json && typeof row.json === 'object') {
-              const values = Object.values(row.json)
-              const displayText = values.map(v => {
-                const stringValue = String(v || '')
-                return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
-              }).join(' | ')
-              const rowIdDisplay = (row.uuid || '').substring(0, 16)
-              return {
-                name: `${rowIdDisplay}... - ${displayText}`,
-                value: row.uuid,
-                description: 'View full JSON'
-              }
-            } else {
-              const rowIdDisplay = (row.uuid || '').substring(0, 16)
-              return {
-                name: `${rowIdDisplay}... - (error)`,
-                value: row.uuid,
-                description: 'View full JSON'
-              }
-            }
-          })
-        } else {
-          // Fallback to regular table
-          if (analysis.reason) {
-            console.log(chalk.yellow(`${analysis.reason}, showing JSON snippets\n`))
-          }
-          const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
-          table = createRowTable()
-          rows.forEach(row => addRowToTable(table, row))
-          choices = createRowChoices(rows)
-        }
-      } else {
-        // No query, use regular table
-        const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
-        table = createRowTable()
-        rows.forEach(row => addRowToTable(table, row))
-        choices = createRowChoices(rows)
-      }
-
-      console.log(table.toString())
-
-      choices.push({
-        name: chalk.gray('← Back to Filter Menu'),
-        value: 'back'
-      })
-
-      const choice = await select({
-        message: 'Select a row to view full JSON:',
-        choices
-      })
-
-      if (choice === 'back') {
+      if (!selectedRowId) {
         return returnCallback(sheet, schema)
       }
 
-      // Get the full row data since list view query may have filtered the JSON
-      const fullRow = await sheet.getRow(schema.schemaId, choice)
-      await this.showRowDetail(sheet, schema, fullRow, 'filter', returnCallback)
+      // Get the full row data and show actions menu
+      const fullRow = await sheet.getRow(schema.schemaId, selectedRowId)
+      await this.showRowActions(sheet, schema, fullRow, returnCallback)
     } catch (error) {
       console.error(chalk.red('Error loading filtered rows:'), error.message)
       await this.waitForContinue()
@@ -414,17 +274,53 @@ export class RowMenu extends BaseMenu {
     }
   }
 
-  async showRowDetail(sheet, schema, row, returnTo = 'list', returnCallback) {
-    console.clear()
-    console.log(chalk.blue.bold(`📄 Row Detail - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-    console.log(chalk.gray(`Schema: ${schema.name}`))
-    console.log(chalk.gray(`Row UUID: ${row.uuid}`))
-    console.log(chalk.gray(`Row Time: ${new Date(row.time).toLocaleString()}\n`))
+  async showRowActions(sheet, schema, row, returnCallback) {
+    const { showRowActionsMenu, displayJsonWithFallback, copyToClipboard } = await import('../utils/display.mjs')
     
-    await displayJsonWithFallback(row.json, 'Full JSON')
-    
-    // Always return to the main row menu to avoid callback chain issues
-    return returnCallback(sheet, schema)
+    while (true) {
+      const action = await showRowActionsMenu(row, this.roomManager.getCurrentRoomName())
+      
+      switch (action) {
+        case 'view':
+          console.clear()
+          console.log(chalk.blue.bold(`👁️ Full JSON - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
+          console.log(chalk.gray(`Schema: ${schema.name}`))
+          console.log(chalk.gray(`Row UUID: ${row.uuid}`))
+          console.log(chalk.gray(`Created: ${new Date(row.time).toLocaleString()}\n`))
+          
+          await displayJsonWithFallback(row.json, 'Full JSON')
+          // Continue the loop to show actions menu again
+          break
+          
+        case 'signatures':
+          console.clear()
+          console.log(chalk.blue.bold(`🔏 Row Signatures - Coming Soon\n`))
+          console.log(chalk.yellow('Row signature functionality will be implemented in a future update.'))
+          await this.waitForContinue()
+          // Continue the loop to show actions menu again
+          break
+          
+        case 'copy':
+          try {
+            await copyToClipboard(row.json)
+            console.clear()
+            console.log(chalk.green('✅ Row JSON copied to clipboard!'))
+            await this.waitForContinue()
+          } catch (error) {
+            console.clear()
+            console.log(chalk.red(`❌ Failed to copy to clipboard: ${error.message}`))
+            await this.waitForContinue()
+          }
+          // Continue the loop to show actions menu again
+          break
+          
+        case 'back':
+          return returnCallback(sheet, schema)
+          
+        default:
+          return returnCallback(sheet, schema)
+      }
+    }
   }
 
   async showAddRow(sheet, schema, returnCallback) {
