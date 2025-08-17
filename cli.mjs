@@ -78,29 +78,38 @@ process.once('SIGINT', async function () {
 
 // Main navigation functions
 async function showMainMenu(sheet) {
-  const { choice, schemas } = await mainMenu.show(sheet)
+  try {
+    console.log(chalk.cyan('DEBUG: Entering showMainMenu'))
+    const { choice, schemas } = await mainMenu.show(sheet)
+    console.log(chalk.cyan(`DEBUG: Main menu choice: ${choice}`))
 
-  if (choice.startsWith('schema-')) {
-    const schemaId = choice.replace('schema-', '')
-    const selectedSchema = schemas.find(s => s.schemaId === schemaId)
-    await showRowMenu(sheet, selectedSchema)
-  } else {
-    switch (choice) {
-      case 'add-schema':
-        await showAddSchema(sheet)
-        break
-      case 'change-room-name':
-        await mainMenu.showChangeRoomName(sheet)
-        break
-      case 'copy-room-link':
-        await mainMenu.showCopyRoomLink(sheet)
-        break
-      case 'lobby':
-        await roomManager.closeCurrentSheet()
-        sheetOps.resetLastJmesQuery()
-        await showRoomLobby()
-        break
+    if (choice.startsWith('schema-')) {
+      const schemaId = choice.replace('schema-', '')
+      const selectedSchema = schemas.find(s => s.schemaId === schemaId)
+      await showRowMenu(sheet, selectedSchema)
+    } else {
+      switch (choice) {
+        case 'add-schema':
+          await showAddSchema(sheet)
+          break
+        case 'change-room-name':
+          await mainMenu.showChangeRoomName(sheet)
+          break
+        case 'copy-room-link':
+          await mainMenu.showCopyRoomLink(sheet)
+          break
+        case 'lobby':
+          await roomManager.closeCurrentSheet()
+          sheetOps.resetLastJmesQuery()
+          await showRoomLobby()
+          break
+      }
     }
+  } catch (error) {
+    console.error(chalk.red('ERROR in showMainMenu:'), error)
+    console.error(chalk.red('Stack trace:'), error.stack)
+    await input({ message: 'Press Enter to continue...' })
+    return showRoomLobby()
   }
 }
 
@@ -124,23 +133,33 @@ async function showAddSchema(sheet) {
 }
 
 async function showRowMenu(sheet, schema) {
-  const choice = await rowMenu.show(sheet, schema)
+  try {
+    console.log(chalk.cyan('DEBUG: Entering showRowMenu'))
+    const choice = await rowMenu.show(sheet, schema)
+    console.log(chalk.cyan(`DEBUG: Row menu choice: ${choice}`))
 
-  switch (choice) {
-    case 'list-rows':
-      await rowMenu.showRowList(sheet, schema, showRowMenu)
-      break
-    case 'filter-rows':
-      await rowMenu.showFilterRows(sheet, schema, showRowMenu)
-      break
-    case 'add-row':
-      await rowMenu.showAddRow(sheet, schema, showRowMenu)
-      break
-    case 'ui-schema':
-      await rowMenu.showUISchemaMenu(sheet, schema, showRowMenu)
-      break
-    case 'back':
-      return await showMainMenu(sheet)
+    switch (choice) {
+      case 'list-rows':
+        await rowMenu.showRowList(sheet, schema, showRowMenu)
+        break
+      case 'filter-rows':
+        await rowMenu.showFilterRows(sheet, schema, showRowMenu)
+        break
+      case 'add-row':
+        await rowMenu.showAddRow(sheet, schema, showRowMenu)
+        break
+      case 'ui-schema':
+        await rowMenu.showUISchemaMenu(sheet, schema, showRowMenu)
+        break
+      case 'back':
+        console.log(chalk.cyan('DEBUG: Going back to main menu'))
+        return await showMainMenu(sheet)
+    }
+  } catch (error) {
+    console.error(chalk.red('ERROR in showRowMenu:'), error)
+    console.error(chalk.red('Stack trace:'), error.stack)
+    await input({ message: 'Press Enter to continue...' })
+    return showMainMenu(sheet)
   }
 }
 
