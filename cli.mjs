@@ -135,8 +135,15 @@ async function showAddSchema(sheet) {
 async function showRowMenu(sheet, schema) {
   try {
     console.log(chalk.cyan('DEBUG: Entering showRowMenu'))
+    console.log(chalk.cyan(`DEBUG: Schema:`, schema))
     const choice = await rowMenu.show(sheet, schema)
     console.log(chalk.cyan(`DEBUG: Row menu choice: ${choice}`))
+    console.log(chalk.cyan(`DEBUG: Choice type: ${typeof choice}`))
+
+    if (choice === undefined || choice === null) {
+      console.log(chalk.red('DEBUG: Choice is undefined/null, returning to main menu'))
+      return await showMainMenu(sheet)
+    }
 
     switch (choice) {
       case 'list-rows':
@@ -153,6 +160,9 @@ async function showRowMenu(sheet, schema) {
         break
       case 'back':
         console.log(chalk.cyan('DEBUG: Going back to main menu'))
+        return await showMainMenu(sheet)
+      default:
+        console.log(chalk.yellow(`DEBUG: Unhandled choice: ${choice}`))
         return await showMainMenu(sheet)
     }
   } catch (error) {
