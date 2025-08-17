@@ -317,11 +317,11 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
     if (analysis.canShowColumns) {
       // Create choices for structured data with better display
       choices = rows.map((row, index) => {
-        if (row.json && typeof row.json === 'object') {
+        if (row.json && typeof row.json === 'object' && !Array.isArray(row.json)) {
           const values = Object.values(row.json)
           const displayText = values.map(v => {
             const stringValue = String(v || '')
-            return stringValue.length > 25 ? stringValue.substring(0, 25) + '...' : stringValue
+            return stringValue.length > 30 ? stringValue.substring(0, 30) + '...' : stringValue
           }).join(' | ')
           const rowIdDisplay = (row.uuid || '').substring(0, 8)
           const timeDisplay = new Date(row.time).toLocaleString()

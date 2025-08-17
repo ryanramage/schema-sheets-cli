@@ -254,9 +254,13 @@ export class RowMenu extends BaseMenu {
 
       // Use interactive row selection
       const { displayRowsInteractively } = await import('../utils/display.mjs')
+      
+      // Create a query object for display purposes
+      const displayQuery = jmesQuery ? { JMESPathQuery: jmesQuery } : listViewQuery
+      
       const selectedRowId = await displayRowsInteractively(
         rows, 
-        listViewQuery, 
+        displayQuery, 
         `Select a row (${rows.length} filtered):`
       )
 
