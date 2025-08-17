@@ -244,7 +244,7 @@ export class SheetOperations {
       const rowId = await sheet.addRow(schema.schemaId, jsonContent)
       console.log(chalk.green(`✅ Row added successfully with ID: ${rowId}`))
       
-      return rowId
+      return { rowId, rowData: jsonContent }
     } catch (error) {
       console.error(chalk.red('Error adding row:'), error.message)
       throw error
@@ -586,7 +586,7 @@ export class SheetOperations {
       const rowId = await sheet.addRow(schema.schemaId, jsonContent)
       console.log(chalk.green(`✅ Row added successfully with ID: ${rowId}`))
       
-      return rowId
+      return { rowId, rowData: jsonContent }
     } catch (error) {
       console.error(chalk.red('Error adding row:'), error.message)
       throw error
