@@ -1,12 +1,50 @@
 # Schema Sheets CLI
 
+tldr: trying to be a p2p form/sheets system.
+
 A peer-to-peer multiwriter room system for collaborative schema-based data entry. Create or join rooms to share and manage structured JSON data with real-time synchronization across all participants.
+
 ## Usage
 
 Start the application:
 
 ```bash
 npx schema-sheets-cli
+```
+
+## Alpha Code
+
+### App Data
+
+Schema sheets is in alpha right now. The underlying db spec is not being migrated as we work on features. So when we release new code, if you use a new version 
+you may have to clear out your data dir, and have data loss. 
+
+On osx to clear schema sheets, do the following
+
+```
+~/Library/Application Support
+🐟 rm -rf schema-sheets-nodejs
+```
+
+### Keet Id
+
+We have now added keet id linking. To do this, you will have to enter your 24 words from keet. 
+
+**DANGER** - Any app that takes your 24 words is giving up your full keet id to it. You have been warned.
+
+This app, will only generate a device key from the words, and never store your root id. But these keys are still tied back to 
+your keet id, so treat them safe. This app will store the device keys here:
+
+```
+Library/Preferences/schema-sheets-nodejs
+🐟 less signing.json
+{
+  "keetUsername": "ryan1",
+  "identityPublicKey": "tco4...",
+  "devicePublicKey": "whwh1...",
+  "deviceSecretKey": "147a9...",
+  "bootstrapProof": "0125fe..."
+}
 ```
 
 ## Features
