@@ -111,7 +111,7 @@ export class RoomManager {
     if (this.currentSheet) {
       try {
         await this.currentSheet.close()
-        console.log(chalk.gray('Sheet closed'))
+        console.log(chalk.cyan('Sheet closed'))
       } catch (error) {
         console.warn(chalk.yellow('Warning: Error closing sheet:'), error.message)
       }

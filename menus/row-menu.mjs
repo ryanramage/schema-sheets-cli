@@ -37,7 +37,7 @@ export class RowMenu extends BaseMenu {
         description: 'Create, edit, and delete saved queries for this schema'
       },
       {
-        name: chalk.gray('← Back to Main Menu'),
+        name: chalk.cyan('← Back to Main Menu'),
         value: 'back'
       }
     ]
@@ -151,7 +151,7 @@ export class RowMenu extends BaseMenu {
           description: 'Set custom date range'
         },
         {
-          name: chalk.gray('← Back to Row Menu'),
+          name: chalk.cyan('← Back to Row Menu'),
           value: 'back'
         }
       ]
@@ -164,7 +164,7 @@ export class RowMenu extends BaseMenu {
     let gte, lte
 
     if (choice === 'custom') {
-      console.log(chalk.gray('\nEnter custom date range:'))
+      console.log(chalk.cyan('\nEnter custom date range:'))
       
       // Default LTE to today
       const defaultLte = new Date().toISOString().split('T')[0]
@@ -358,7 +358,7 @@ export class RowMenu extends BaseMenu {
         description: 'Select a JSON file from your computer'
       },
       {
-        name: chalk.gray('← Back to Row Menu'),
+        name: chalk.cyan('← Back to Row Menu'),
         value: 'back'
       }
     ]
@@ -472,7 +472,7 @@ export class RowMenu extends BaseMenu {
           description: 'Create a new UI schema from file or URL'
         },
         {
-          name: chalk.gray('← Back to Row Menu'),
+          name: chalk.cyan('← Back to Row Menu'),
           value: 'back'
         }
       )
@@ -525,7 +525,7 @@ export class RowMenu extends BaseMenu {
           description: 'Download UI schema from a URL'
         },
         {
-          name: chalk.gray('← Back to UI Schema Menu'),
+          name: chalk.cyan('← Back to UI Schema Menu'),
           value: 'back'
         }
       ]
@@ -581,7 +581,7 @@ export class RowMenu extends BaseMenu {
           description: 'Remove this UI schema'
         },
         {
-          name: chalk.gray('← Back to UI Schema Menu'),
+          name: chalk.cyan('← Back to UI Schema Menu'),
           value: 'back'
         }
       ]
@@ -629,7 +629,7 @@ export class RowMenu extends BaseMenu {
           description: 'Download new UI schema from a URL'
         },
         {
-          name: chalk.gray('← Back to UI Schema Detail'),
+          name: chalk.cyan('← Back to UI Schema Detail'),
           value: 'back'
         }
       ]
@@ -721,7 +721,7 @@ export class RowMenu extends BaseMenu {
           description: 'Create and save a new JMESPath query'
         },
         {
-          name: chalk.gray('← Back to Row Menu'),
+          name: chalk.cyan('← Back to Row Menu'),
           value: 'back'
         }
       )
@@ -877,7 +877,7 @@ export class RowMenu extends BaseMenu {
         description: 'Remove this query permanently'
       },
       {
-        name: chalk.gray('← Back to Manage Queries'),
+        name: chalk.cyan('← Back to Manage Queries'),
         value: 'back'
       }
     )

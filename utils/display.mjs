@@ -324,7 +324,7 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
   }
 
   choices.push({
-    name: chalk.gray('← Back'),
+    name: chalk.cyan('← Back'),
     value: 'back'
   })
 
@@ -361,8 +361,8 @@ export function createRowChoicesWithNumbers(rows) {
 export async function showRowActionsMenu(row, roomName = 'Unknown') {
   console.clear()
   console.log(chalk.blue.bold(`📄 Row Actions - Room: ${roomName}\n`))
-  console.log(chalk.gray(`Row UUID: ${row.uuid}`))
-  console.log(chalk.gray(`Created: ${new Date(row.time).toLocaleString()}\n`))
+  console.log(chalk.cyan(`Row UUID: ${row.uuid}`))
+  console.log(chalk.cyan(`Created: ${new Date(row.time).toLocaleString()}\n`))
 
   const choice = await select({
     message: 'What would you like to do with this row?',
@@ -383,7 +383,7 @@ export async function showRowActionsMenu(row, roomName = 'Unknown') {
         description: 'Copy row JSON to clipboard'
       },
       {
-        name: chalk.gray('← Back to Row List'),
+        name: chalk.cyan('← Back to Row List'),
         value: 'back'
       }
     ]

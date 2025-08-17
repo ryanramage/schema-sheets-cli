@@ -186,11 +186,11 @@ export class SheetOperations {
         }
       })
 
-      console.log(chalk.gray('Downloading schema...'))
+      console.log(chalk.cyan('Downloading schema...'))
       schemaContent = await downloadJsonFromUrl(url)
     } else if (method === 'example') {
       schemaContent = issueSchema
-      console.log(chalk.gray('\nUsing example issue schema:'))
+      console.log(chalk.cyan('\nUsing example issue schema:'))
       console.log(JSON.stringify(schemaContent, null, 2))
       console.log('')
     }
@@ -214,7 +214,7 @@ export class SheetOperations {
       const valid = validate(jsonContent)
       
       // Show preview of JSON
-      console.log(chalk.gray('\nJSON Preview:'))
+      console.log(chalk.cyan('\nJSON Preview:'))
       console.log(JSON.stringify(jsonContent, null, 2))
       
       if (!valid) {
@@ -223,10 +223,10 @@ export class SheetOperations {
         validate.errors.forEach((error, index) => {
           console.log(chalk.red(`  ${index + 1}. ${error.instancePath || 'root'}: ${error.message}`))
           if (error.params && error.params.allowedValues) {
-            console.log(chalk.gray(`     Allowed values: ${error.params.allowedValues.join(', ')}`))
+            console.log(chalk.cyan(`     Allowed values: ${error.params.allowedValues.join(', ')}`))
           }
         })
-        console.log(chalk.gray('\nPlease fix the JSON data and try again.'))
+        console.log(chalk.cyan('\nPlease fix the JSON data and try again.'))
         throw new Error('JSON validation failed')
       }
       
@@ -271,12 +271,12 @@ export class SheetOperations {
         }
       })
 
-      console.log(chalk.gray('Downloading UI schema...'))
+      console.log(chalk.cyan('Downloading UI schema...'))
       uiSchemaContent = await downloadJsonFromUrl(url)
     }
 
     // Show preview
-    console.log(chalk.gray('\nUI Schema Preview:'))
+    console.log(chalk.cyan('\nUI Schema Preview:'))
     console.log(JSON.stringify(uiSchemaContent, null, 2))
     
     const confirmAdd = await confirm({
@@ -314,12 +314,12 @@ export class SheetOperations {
         }
       })
 
-      console.log(chalk.gray('Downloading UI schema...'))
+      console.log(chalk.cyan('Downloading UI schema...'))
       newUISchemaContent = await downloadJsonFromUrl(url)
     }
 
     // Show preview
-    console.log(chalk.gray('\nNew UI Schema Preview:'))
+    console.log(chalk.cyan('\nNew UI Schema Preview:'))
     console.log(JSON.stringify(newUISchemaContent, null, 2))
     
     const confirmUpdate = await confirm({
@@ -355,7 +355,7 @@ export class SheetOperations {
       let isListView = false
 
       if (analysis.isValidListView) {
-        console.log(chalk.gray(`\nDetected list view query with columns: ${analysis.columns.join(', ')}`))
+        console.log(chalk.cyan(`\nDetected list view query with columns: ${analysis.columns.join(', ')}`))
         
         // Check for existing list view queries
         const existingListView = await this.checkExistingListView(sheet, schema)
@@ -371,7 +371,7 @@ export class SheetOperations {
             // Remove list view flag from existing query
             try {
               await sheet.updateQuery(existingListView.queryId, existingListView.name, existingListView.JMESPathQuery, false)
-              console.log(chalk.gray(`Removed list view flag from "${existingListView.name}"`))
+              console.log(chalk.cyan(`Removed list view flag from "${existingListView.name}"`))
               isListView = true
             } catch (error) {
               console.log(chalk.yellow(`Warning: Could not update existing query: ${error.message}`))
@@ -456,7 +456,7 @@ export class SheetOperations {
       // Add saved queries if any exist
       if (savedQueries.length > 0) {
         choices.push({
-          name: chalk.gray('--- Saved Queries ---'),
+          name: chalk.cyan('--- Saved Queries ---'),
           value: 'separator-saved',
           disabled: ''
         })
@@ -470,7 +470,7 @@ export class SheetOperations {
         })
         
         choices.push({
-          name: chalk.gray('--- Create New ---'),
+          name: chalk.cyan('--- Create New ---'),
           value: 'separator-new',
           disabled: ''
         })
@@ -510,9 +510,9 @@ export class SheetOperations {
       }
 
       if (queryChoice === 'custom') {
-        console.log(chalk.gray('\nEnter JMESPath query to filter results'))
-        console.log(chalk.gray('Examples: title, status == `open`, priority == `high`'))
-        console.log(chalk.gray('Leave empty to skip filtering\n'))
+        console.log(chalk.cyan('\nEnter JMESPath query to filter results'))
+        console.log(chalk.cyan('Examples: title, status == `open`, priority == `high`'))
+        console.log(chalk.cyan('Leave empty to skip filtering\n'))
         
         const { input } = await import('@inquirer/prompts')
         const customQuery = await input({
@@ -556,7 +556,7 @@ export class SheetOperations {
       const valid = validate(jsonContent)
       
       // Show preview of JSON
-      console.log(chalk.gray('\nJSON Preview:'))
+      console.log(chalk.cyan('\nJSON Preview:'))
       console.log(JSON.stringify(jsonContent, null, 2))
       
       if (!valid) {
@@ -565,10 +565,10 @@ export class SheetOperations {
         validate.errors.forEach((error, index) => {
           console.log(chalk.red(`  ${index + 1}. ${error.instancePath || 'root'}: ${error.message}`))
           if (error.params && error.params.allowedValues) {
-            console.log(chalk.gray(`     Allowed values: ${error.params.allowedValues.join(', ')}`))
+            console.log(chalk.cyan(`     Allowed values: ${error.params.allowedValues.join(', ')}`))
           }
         })
-        console.log(chalk.gray('\nPlease fix the JSON data and try again.'))
+        console.log(chalk.cyan('\nPlease fix the JSON data and try again.'))
         throw new Error('JSON validation failed')
       }
       

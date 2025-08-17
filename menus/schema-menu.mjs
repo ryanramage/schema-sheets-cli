@@ -22,7 +22,7 @@ export class SchemaMenu extends BaseMenu {
         description: 'Use a pre-built issue tracking schema'
       },
       {
-        name: chalk.gray('← Back to Main Menu'),
+        name: chalk.cyan('← Back to Main Menu'),
         value: 'back'
       }
     ]
