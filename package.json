@@ -31,7 +31,7 @@
     "keet-identity-key": "^3.1.0",
     "make-dir": "^5.0.0",
     "protomux-wakeup": "^2.5.0",
-    "schema-sheets": "^2.0.0",
+    "schema-sheets": "^3.0.0",
     "sodium-native": "^5.0.6",
     "to-clipboard-android": "^0.2.0",
     "z32": "^1.1.0"
