@@ -5,8 +5,60 @@ import { BaseMenu } from './base-menu.mjs'
 import { WebFormServer } from '../web/index.mjs'
 import { getDateRanges, formatDateRange } from '../utils/date-filters.mjs'
 import { displayJsonWithFallback, createRowTable, addRowToTable, createRowChoices } from '../utils/display.mjs'
+import { signingConfigExists, loadSigningConfig } from '../config/signing-utils.mjs'
+import b4a from 'b4a'
 
 export class RowMenu extends BaseMenu {
+  async signRowIfConfigured(sheet, schema, rowId, rowData) {
+    try {
+      // Check if signing is configured
+      if (!signingConfigExists()) {
+        return false
+      }
+
+      const signingConfig = loadSigningConfig()
+      if (!signingConfig || !signingConfig.deviceKeyPair || !signingConfig.deviceProof) {
+        console.log(chalk.yellow('⚠️ Signing configuration incomplete. Please run setup signing again.'))
+        return false
+      }
+
+      // Ask user if they want to sign the row
+      const shouldSign = await confirm({
+        message: 'Would you like to sign this row?',
+        default: true
+      })
+
+      if (!shouldSign) {
+        return false
+      }
+
+      console.log(chalk.cyan('Signing row...'))
+
+      // Import IdentityKey dynamically
+      const IdentityKey = (await import('hypercore-identity-key')).default
+
+      // Get the row data as a buffer for signing
+      const rowBuffer = b4a.from(JSON.stringify(rowData))
+
+      // Create attestation proof using stored device keypair and proof
+      const proof = IdentityKey.attestData(
+        rowBuffer, 
+        signingConfig.deviceKeyPair, 
+        signingConfig.deviceProof
+      )
+
+      // Submit the attestation to the sheet
+      await sheet.addRowAttestation(rowId, proof)
+
+      console.log(chalk.green('✅ Row signed successfully!'))
+      return true
+
+    } catch (error) {
+      console.error(chalk.red('Error signing row:'), error.message)
+      return false
+    }
+  }
+
   async show(sheet, schema) {
     const title = `📊 Managing Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}`
 
@@ -375,7 +427,13 @@ export class RowMenu extends BaseMenu {
 
     // File method
     try {
-      await this.sheetOps.addRowFromFile(sheet, schema)
+      const result = await this.sheetOps.addRowFromFile(sheet, schema)
+      
+      // If row was added successfully and we have the row data, offer to sign it
+      if (result && result.rowId && result.rowData) {
+        await this.signRowIfConfigured(sheet, schema, result.rowId, result.rowData)
+      }
+      
       await this.waitForContinue()
       
       return returnCallback(sheet, schema)
@@ -419,6 +477,9 @@ export class RowMenu extends BaseMenu {
         // Add the row to the sheet
         const rowId = await sheet.addRow(schema.schemaId, result.data)
         console.log(chalk.green(`✅ Row added with ID: ${rowId}`))
+        
+        // Offer to sign the row if signing is configured
+        await this.signRowIfConfigured(sheet, schema, rowId, result.data)
         
         await this.waitForContinue()
         return returnCallback(sheet, schema)
