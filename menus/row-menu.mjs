@@ -35,13 +35,10 @@ export class RowMenu extends BaseMenu {
       }
 
       console.log(chalk.cyan('Signing row...'))
-      console.log(rowData)
 
       // Get the row data as a buffer for signing
       const message = b4a.from(JSON.stringify(rowData))
       const keyPair = { publicKey: signingConfig.devicePublicKey, secretKey: signingConfig.deviceSecretKey}
-      console.log('keyPair', keyPair)
-      console.log('proof', signingConfig.bootstrapProof)
 
       // Create attestation proof using stored device keypair and proof
       const proof = IdentityKey.attestData(
@@ -49,8 +46,6 @@ export class RowMenu extends BaseMenu {
         keyPair,
         signingConfig.bootstrapProof
       )
-      console.log('the proof', proof)
-      console.log('the rowId', rowId)
 
       // Submit the attestation to the sheet
       await sheet.addRowAttestation(rowId, proof, signingConfig.keetUsername)
