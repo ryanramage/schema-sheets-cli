@@ -8,6 +8,7 @@ import { displayJsonWithFallback, createRowTable, addRowToTable, createRowChoice
 import { signingConfigExists, loadSigningConfig } from '../config/signing-utils.mjs'
 import b4a from 'b4a'
 import IdentityKey from 'keet-identity-key'
+import Id from 'hypercore-id-encoding'
 
 export class RowMenu extends BaseMenu {
   async signRowIfConfigured(sheet, schema, rowId, rowData) {
@@ -1195,11 +1196,6 @@ export class RowMenu extends BaseMenu {
       }
 
       console.log(chalk.cyan(`Found ${attestations.length} signature(s):\n`))
-
-      // Import required modules for verification
-      const IdentityKey = (await import('keet-identity-key')).default
-      const Id = (await import('hypercore-id-encoding')).default
-      const b4a = (await import('b4a')).default
 
       // Prepare the message for verification (same as what was signed)
       const message = b4a.from(JSON.stringify(row.json))
