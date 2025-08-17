@@ -210,3 +210,63 @@ export function createListViewRowChoices(transformedRows) {
     }
   })
 }
+
+/**
+ * Analyze query results to determine if they can be displayed as columns
+ */
+export function analyzeQueryResults(rows, queryText) {
+  if (!rows || rows.length === 0) {
+    return { canShowColumns: false, columns: [], reason: 'No data to analyze' }
+  }
+
+  // Check if the query results in structured objects suitable for column display
+  const hasStructuredData = rows.some(row => 
+    row.json && 
+    typeof row.json === 'object' && 
+    !Array.isArray(row.json) &&
+    Object.keys(row.json).length > 0
+  )
+
+  if (!hasStructuredData) {
+    return { canShowColumns: false, columns: [], reason: 'Query results are not structured objects' }
+  }
+
+  // Get columns from the first structured row
+  const sampleRow = rows.find(row => 
+    row.json && 
+    typeof row.json === 'object' && 
+    !Array.isArray(row.json) &&
+    Object.keys(row.json).length > 0
+  )
+
+  if (!sampleRow) {
+    return { canShowColumns: false, columns: [], reason: 'No valid structured data found' }
+  }
+
+  const columns = Object.keys(sampleRow.json)
+  
+  if (columns.length === 0) {
+    return { canShowColumns: false, columns: [], reason: 'No columns found in structured data' }
+  }
+
+  // Additional check: ensure most rows have the same structure
+  const consistentRows = rows.filter(row => {
+    if (!row.json || typeof row.json !== 'object' || Array.isArray(row.json)) {
+      return false
+    }
+    const rowColumns = Object.keys(row.json)
+    return rowColumns.length === columns.length && 
+           columns.every(col => rowColumns.includes(col))
+  })
+
+  const consistencyRatio = consistentRows.length / rows.length
+  if (consistencyRatio < 0.8) { // At least 80% of rows should have consistent structure
+    return { 
+      canShowColumns: false, 
+      columns: [], 
+      reason: `Only ${Math.round(consistencyRatio * 100)}% of rows have consistent structure` 
+    }
+  }
+
+  return { canShowColumns: true, columns, reason: null }
+}

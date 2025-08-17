@@ -84,69 +84,58 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      // Create table and choices based on whether we have list view data
+      // Analyze the list view query to determine if we can show nice columns
       let table
       let choices
 
       if (listViewQuery) {
-        // Check if the list view query returned structured data
-        const hasListViewData = rows.some(row => row.json && typeof row.json === 'object' && !Array.isArray(row.json))
+        const { analyzeQueryResults } = await import('../utils/display.mjs')
+        const analysis = analyzeQueryResults(rows, listViewQuery.JMESPathQuery)
         
-        if (hasListViewData) {
-          // Get columns from the first row's data
-          const sampleData = rows.find(row => row.json && typeof row.json === 'object')?.json
-          const columns = sampleData ? Object.keys(sampleData) : []
+        if (analysis.canShowColumns) {
+          // Create dynamic table for structured data
+          const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
+          table = createDynamicTable(analysis.columns)
           
-          if (columns.length > 0) {
-            // Create dynamic table for list view
-            const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
-            table = createDynamicTable(columns)
-            
-            rows.forEach(row => {
-              if (row.json && typeof row.json === 'object') {
-                addDynamicRowToTable(table, row.json)
-              } else {
-                // Add fallback row for failed transformations
-                const fallbackData = {}
-                columns.forEach(col => { fallbackData[col] = '(error)' })
-                addDynamicRowToTable(table, fallbackData)
+          rows.forEach(row => {
+            if (row.json && typeof row.json === 'object') {
+              addDynamicRowToTable(table, row.json)
+            } else {
+              // Add fallback row for failed transformations
+              const fallbackData = {}
+              analysis.columns.forEach(col => { fallbackData[col] = '(error)' })
+              addDynamicRowToTable(table, fallbackData)
+            }
+          })
+          
+          // Create choices for structured data
+          choices = rows.map(row => {
+            if (row.json && typeof row.json === 'object') {
+              const values = Object.values(row.json)
+              const displayText = values.map(v => {
+                const stringValue = String(v || '')
+                return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
+              }).join(' | ')
+              const rowIdDisplay = (row.uuid || '').substring(0, 16)
+              return {
+                name: `${rowIdDisplay}... - ${displayText}`,
+                value: row.uuid,
+                description: 'View full JSON'
               }
-            })
-            
-            // Create choices for list view
-            choices = rows.map(row => {
-              if (row.json && typeof row.json === 'object') {
-                const values = Object.values(row.json)
-                const displayText = values.map(v => {
-                  const stringValue = String(v || '')
-                  return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
-                }).join(' | ')
-                const rowIdDisplay = (row.uuid || '').substring(0, 16)
-                return {
-                  name: `${rowIdDisplay}... - ${displayText}`,
-                  value: row.uuid,
-                  description: 'View full JSON'
-                }
-              } else {
-                const rowIdDisplay = (row.uuid || '').substring(0, 16)
-                return {
-                  name: `${rowIdDisplay}... - (error)`,
-                  value: row.uuid,
-                  description: 'View full JSON'
-                }
+            } else {
+              const rowIdDisplay = (row.uuid || '').substring(0, 16)
+              return {
+                name: `${rowIdDisplay}... - (error)`,
+                value: row.uuid,
+                description: 'View full JSON'
               }
-            })
-          } else {
-            // Fallback to regular table
-            console.log(chalk.yellow('List view query returned no columns, falling back to JSON snippets\n'))
-            const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
-            table = createRowTable()
-            rows.forEach(row => addRowToTable(table, row))
-            choices = createRowChoices(rows)
-          }
+            }
+          })
         } else {
           // Fallback to regular table
-          console.log(chalk.yellow('List view query failed, falling back to JSON snippets\n'))
+          if (analysis.reason) {
+            console.log(chalk.yellow(`${analysis.reason}, showing JSON snippets\n`))
+          }
           const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
           table = createRowTable()
           rows.forEach(row => addRowToTable(table, row))
@@ -332,76 +321,67 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      // Create table and choices based on whether we used a list view query
+      // Analyze the query being used to determine if we can show nice columns
+      const queryForAnalysis = jmesQuery || (listViewQuery ? listViewQuery.JMESPathQuery : null)
       let table
       let choices
 
-      if (listViewQuery && !jmesQuery) {
-        // Check if the list view query returned structured data
-        const hasListViewData = rows.some(row => row.json && typeof row.json === 'object' && !Array.isArray(row.json))
+      if (queryForAnalysis) {
+        // Check if any query (custom or list view) returned structured data suitable for columns
+        const { analyzeQueryResults } = await import('../utils/display.mjs')
+        const analysis = analyzeQueryResults(rows, queryForAnalysis)
         
-        if (hasListViewData) {
-          // Get columns from the first row's data
-          const sampleData = rows.find(row => row.json && typeof row.json === 'object')?.json
-          const columns = sampleData ? Object.keys(sampleData) : []
+        if (analysis.canShowColumns) {
+          // Create dynamic table for structured data
+          const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
+          table = createDynamicTable(analysis.columns)
           
-          if (columns.length > 0) {
-            // Create dynamic table for list view
-            const { createDynamicTable, addDynamicRowToTable } = await import('../utils/display.mjs')
-            table = createDynamicTable(columns)
-            
-            rows.forEach(row => {
-              if (row.json && typeof row.json === 'object') {
-                addDynamicRowToTable(table, row.json)
-              } else {
-                // Add fallback row for failed transformations
-                const fallbackData = {}
-                columns.forEach(col => { fallbackData[col] = '(error)' })
-                addDynamicRowToTable(table, fallbackData)
+          rows.forEach(row => {
+            if (row.json && typeof row.json === 'object') {
+              addDynamicRowToTable(table, row.json)
+            } else {
+              // Add fallback row for failed transformations
+              const fallbackData = {}
+              analysis.columns.forEach(col => { fallbackData[col] = '(error)' })
+              addDynamicRowToTable(table, fallbackData)
+            }
+          })
+          
+          // Create choices for structured data
+          choices = rows.map(row => {
+            if (row.json && typeof row.json === 'object') {
+              const values = Object.values(row.json)
+              const displayText = values.map(v => {
+                const stringValue = String(v || '')
+                return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
+              }).join(' | ')
+              const rowIdDisplay = (row.uuid || '').substring(0, 16)
+              return {
+                name: `${rowIdDisplay}... - ${displayText}`,
+                value: row.uuid,
+                description: 'View full JSON'
               }
-            })
-            
-            // Create choices for list view
-            choices = rows.map(row => {
-              if (row.json && typeof row.json === 'object') {
-                const values = Object.values(row.json)
-                const displayText = values.map(v => {
-                  const stringValue = String(v || '')
-                  return stringValue.length > 20 ? stringValue.substring(0, 20) + '...' : stringValue
-                }).join(' | ')
-                const rowIdDisplay = (row.uuid || '').substring(0, 16)
-                return {
-                  name: `${rowIdDisplay}... - ${displayText}`,
-                  value: row.uuid,
-                  description: 'View full JSON'
-                }
-              } else {
-                const rowIdDisplay = (row.uuid || '').substring(0, 16)
-                return {
-                  name: `${rowIdDisplay}... - (error)`,
-                  value: row.uuid,
-                  description: 'View full JSON'
-                }
+            } else {
+              const rowIdDisplay = (row.uuid || '').substring(0, 16)
+              return {
+                name: `${rowIdDisplay}... - (error)`,
+                value: row.uuid,
+                description: 'View full JSON'
               }
-            })
-          } else {
-            // Fallback to regular table
-            console.log(chalk.yellow('List view query returned no columns, falling back to JSON snippets\n'))
-            const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
-            table = createRowTable()
-            rows.forEach(row => addRowToTable(table, row))
-            choices = createRowChoices(rows)
-          }
+            }
+          })
         } else {
           // Fallback to regular table
-          console.log(chalk.yellow('List view query failed, falling back to JSON snippets\n'))
+          if (analysis.reason) {
+            console.log(chalk.yellow(`${analysis.reason}, showing JSON snippets\n`))
+          }
           const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
           table = createRowTable()
           rows.forEach(row => addRowToTable(table, row))
           choices = createRowChoices(rows)
         }
       } else {
-        // No list view query or custom JMESPath filter already applied, use regular table
+        // No query, use regular table
         const { createRowTable, addRowToTable, createRowChoices } = await import('../utils/display.mjs')
         table = createRowTable()
         rows.forEach(row => addRowToTable(table, row))
