@@ -11,7 +11,7 @@ export class BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(title))
     if (this.roomManager.getCurrentRoomName()) {
-      console.log(chalk.gray(`Room: ${this.roomManager.getCurrentRoomName()}`))
+      console.log(chalk.cyan(`Room: ${this.roomManager.getCurrentRoomName()}`))
     }
     console.log('')
 

@@ -72,7 +72,7 @@ export class RowMenu extends BaseMenu {
       const listOptions = {}
       
       if (listViewQuery) {
-        console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
+        console.log(chalk.cyan(`Using list view: ${listViewQuery.name} 📋\n`))
         listOptions.query = listViewQuery.JMESPathQuery
       }
 
@@ -218,10 +218,10 @@ export class RowMenu extends BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(`📋 Filtered Rows - Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
     
-    console.log(chalk.gray(`Date Filter: ${formatDateRange(filterType, filter.gte, filter.lte)}`))
+    console.log(chalk.cyan(`Date Filter: ${formatDateRange(filterType, filter.gte, filter.lte)}`))
     
     if (jmesQuery) {
-      console.log(chalk.gray(`JMESPath Query: ${jmesQuery}`))
+      console.log(chalk.cyan(`JMESPath Query: ${jmesQuery}`))
     }
     console.log('')
 
@@ -234,7 +234,7 @@ export class RowMenu extends BaseMenu {
         listViewQuery = await this.sheetOps.getListViewQuery(sheet, schema)
         if (listViewQuery) {
           queryToUse = listViewQuery.JMESPathQuery
-          console.log(chalk.gray(`Using list view: ${listViewQuery.name} 📋\n`))
+          console.log(chalk.cyan(`Using list view: ${listViewQuery.name} 📋\n`))
         }
       }
 
@@ -296,9 +296,9 @@ export class RowMenu extends BaseMenu {
         case 'view':
           console.clear()
           console.log(chalk.blue.bold(`👁️ Full JSON - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-          console.log(chalk.gray(`Schema: ${schema.name}`))
-          console.log(chalk.gray(`Row UUID: ${row.uuid}`))
-          console.log(chalk.gray(`Created: ${new Date(row.time).toLocaleString()}\n`))
+          console.log(chalk.cyan(`Schema: ${schema.name}`))
+          console.log(chalk.cyan(`Row UUID: ${row.uuid}`))
+          console.log(chalk.cyan(`Created: ${new Date(row.time).toLocaleString()}\n`))
           
           await displayJsonWithFallback(row.json, 'Full JSON')
           // Continue the loop to show actions menu again
@@ -397,7 +397,7 @@ export class RowMenu extends BaseMenu {
       const url = `http://localhost:${port}/?session=${sessionId}&schema=${schema.schemaId}`
       
       console.log(chalk.green(`✅ Web form ready at: ${url}`))
-      console.log(chalk.gray('Opening browser... (Press Ctrl+C to cancel)'))
+      console.log(chalk.cyan('Opening browser... (Press Ctrl+C to cancel)'))
       
       // Open browser
       const openCommand = process.platform === 'darwin' ? 'open' : 
@@ -430,7 +430,7 @@ export class RowMenu extends BaseMenu {
       return returnCallback(sheet, schema)
     } finally {
       await webServer.stop()
-      console.log(chalk.gray('Web server stopped'))
+      console.log(chalk.cyan('Web server stopped'))
     }
   }
 
@@ -445,7 +445,7 @@ export class RowMenu extends BaseMenu {
       
       if (uiSchemas.length > 0) {
         choices.push({
-          name: chalk.gray('--- Existing UI Schemas ---'),
+          name: chalk.cyan('--- Existing UI Schemas ---'),
           value: 'separator-existing',
           disabled: ''
         })
@@ -459,7 +459,7 @@ export class RowMenu extends BaseMenu {
         })
         
         choices.push({
-          name: chalk.gray('--- Actions ---'),
+          name: chalk.cyan('--- Actions ---'),
           value: 'separator-actions',
           disabled: ''
         })
@@ -558,9 +558,9 @@ export class RowMenu extends BaseMenu {
   async showUISchemaDetail(sheet, schema, uiSchema, returnCallback) {
     console.clear()
     console.log(chalk.blue.bold(`📄 UI Schema Detail - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-    console.log(chalk.gray(`Schema: ${schema.name}`))
-    console.log(chalk.gray(`UI Schema: ${uiSchema.name}`))
-    console.log(chalk.gray(`UI Schema ID: ${uiSchema.uischemaId}\n`))
+    console.log(chalk.cyan(`Schema: ${schema.name}`))
+    console.log(chalk.cyan(`UI Schema: ${uiSchema.name}`))
+    console.log(chalk.cyan(`UI Schema ID: ${uiSchema.uischemaId}\n`))
 
     const choice = await select({
       message: 'What would you like to do?',
@@ -655,8 +655,8 @@ export class RowMenu extends BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(`🗑️ Delete UI Schema - ${uiSchema.name}\n`))
     console.log(chalk.yellow('⚠️ This action cannot be undone!'))
-    console.log(chalk.gray(`UI Schema: ${uiSchema.name}`))
-    console.log(chalk.gray(`UI Schema ID: ${uiSchema.uischemaId}\n`))
+    console.log(chalk.cyan(`UI Schema: ${uiSchema.name}`))
+    console.log(chalk.cyan(`UI Schema ID: ${uiSchema.uischemaId}\n`))
 
     const confirmDelete = await confirm({
       message: 'Are you sure you want to delete this UI schema?',
@@ -694,7 +694,7 @@ export class RowMenu extends BaseMenu {
       
       if (savedQueries.length > 0) {
         choices.push({
-          name: chalk.gray('--- Existing Queries ---'),
+          name: chalk.cyan('--- Existing Queries ---'),
           value: 'separator-existing',
           disabled: ''
         })
@@ -708,7 +708,7 @@ export class RowMenu extends BaseMenu {
         })
         
         choices.push({
-          name: chalk.gray('--- Actions ---'),
+          name: chalk.cyan('--- Actions ---'),
           value: 'separator-actions',
           disabled: ''
         })
@@ -760,11 +760,11 @@ export class RowMenu extends BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(`➕ Create New Query - Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
 
-    console.log(chalk.gray('Enter JMESPath query to filter and transform data'))
-    console.log(chalk.gray('Examples:'))
-    console.log(chalk.gray('  • title                           - Simple property'))
-    console.log(chalk.gray('  • status == `open`                - Filter by status'))
-    console.log(chalk.gray('  • [].{title: title, status: status} - List view format'))
+    console.log(chalk.cyan('Enter JMESPath query to filter and transform data'))
+    console.log(chalk.cyan('Examples:'))
+    console.log(chalk.cyan('  • title                           - Simple property'))
+    console.log(chalk.cyan('  • status == `open`                - Filter by status'))
+    console.log(chalk.cyan('  • [].{title: title, status: status} - List view format'))
     console.log('')
 
     try {
@@ -789,7 +789,7 @@ export class RowMenu extends BaseMenu {
       let isListView = false
 
       if (analysis.isValidListView) {
-        console.log(chalk.gray(`\nDetected list view query with columns: ${analysis.columns.join(', ')}`))
+        console.log(chalk.cyan(`\nDetected list view query with columns: ${analysis.columns.join(', ')}`))
         
         // Check for existing list view queries
         const existingListView = await this.sheetOps.checkExistingListView(sheet, schema)
@@ -805,7 +805,7 @@ export class RowMenu extends BaseMenu {
             // Remove list view flag from existing query
             try {
               await sheet.updateQuery(existingListView.queryId, existingListView.name, existingListView.JMESPathQuery, false)
-              console.log(chalk.gray(`Removed list view flag from "${existingListView.name}"`))
+              console.log(chalk.cyan(`Removed list view flag from "${existingListView.name}"`))
               isListView = true
             } catch (error) {
               console.log(chalk.yellow(`Warning: Could not update existing query: ${error.message}`))
@@ -838,10 +838,10 @@ export class RowMenu extends BaseMenu {
   async showQueryDetail(sheet, schema, query, returnCallback) {
     console.clear()
     console.log(chalk.blue.bold(`📄 Query Detail - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
-    console.log(chalk.gray(`Schema: ${schema.name}`))
-    console.log(chalk.gray(`Query: ${query.name}${query.listView ? ' 📋' : ''}`))
-    console.log(chalk.gray(`JMESPath: ${query.JMESPathQuery}`))
-    console.log(chalk.gray(`Query ID: ${query.queryId}\n`))
+    console.log(chalk.cyan(`Schema: ${schema.name}`))
+    console.log(chalk.cyan(`Query: ${query.name}${query.listView ? ' 📋' : ''}`))
+    console.log(chalk.cyan(`JMESPath: ${query.JMESPathQuery}`))
+    console.log(chalk.cyan(`Query ID: ${query.queryId}\n`))
 
     const choices = [
       {
@@ -906,7 +906,7 @@ export class RowMenu extends BaseMenu {
   async showTestQuery(sheet, schema, query, returnCallback) {
     console.clear()
     console.log(chalk.blue.bold(`🧪 Test Query - ${query.name}\n`))
-    console.log(chalk.gray(`Query: ${query.JMESPathQuery}\n`))
+    console.log(chalk.cyan(`Query: ${query.JMESPathQuery}\n`))
 
     try {
       // Get some sample rows to test against
@@ -918,7 +918,7 @@ export class RowMenu extends BaseMenu {
         return this.showQueryDetail(sheet, schema, query, returnCallback)
       }
 
-      console.log(chalk.gray(`Testing against ${rows.length} row(s)...\n`))
+      console.log(chalk.cyan(`Testing against ${rows.length} row(s)...\n`))
 
       // Test the query
       const jmespath = (await import('jmespath')).default
@@ -964,9 +964,9 @@ export class RowMenu extends BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(`✏️ Edit Query - ${query.name}\n`))
     
-    console.log(chalk.gray('Current query:'))
+    console.log(chalk.cyan('Current query:'))
     console.log(chalk.cyan(`  ${query.JMESPathQuery}\n`))
-    console.log(chalk.gray('Enter new query text (or press Enter to keep current):'))
+    console.log(chalk.cyan('Enter new query text (or press Enter to keep current):'))
 
     try {
       const newQueryText = await input({
@@ -978,7 +978,7 @@ export class RowMenu extends BaseMenu {
         }
       })
 
-      console.log(chalk.gray(`\nCurrent name: ${query.name}`))
+      console.log(chalk.cyan(`\nCurrent name: ${query.name}`))
       const newQueryName = await input({
         message: 'Query name:',
         default: query.name,
@@ -1010,7 +1010,7 @@ export class RowMenu extends BaseMenu {
     
     if (!analysis.isValidListView) {
       console.log(chalk.yellow(`⚠️ This query may not be suitable for list view display.`))
-      console.log(chalk.gray(`Reason: ${analysis.reason}\n`))
+      console.log(chalk.cyan(`Reason: ${analysis.reason}\n`))
       
       const proceed = await confirm({
         message: 'Set as list view anyway?',
@@ -1041,7 +1041,7 @@ export class RowMenu extends BaseMenu {
         
         // Remove list view flag from existing query
         await sheet.updateQuery(existingListView.queryId, existingListView.name, existingListView.JMESPathQuery, false)
-        console.log(chalk.gray(`Removed list view flag from "${existingListView.name}"`))
+        console.log(chalk.cyan(`Removed list view flag from "${existingListView.name}"`))
       }
 
       await sheet.updateQuery(query.queryId, query.name, query.JMESPathQuery, true)
@@ -1088,8 +1088,8 @@ export class RowMenu extends BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(`🗑️ Delete Query - ${query.name}\n`))
     console.log(chalk.yellow('⚠️ This action cannot be undone!'))
-    console.log(chalk.gray(`Query: ${query.name}${query.listView ? ' (List View)' : ''}`))
-    console.log(chalk.gray(`JMESPath: ${query.JMESPathQuery}\n`))
+    console.log(chalk.cyan(`Query: ${query.name}${query.listView ? ' (List View)' : ''}`))
+    console.log(chalk.cyan(`JMESPath: ${query.JMESPathQuery}\n`))
 
     const confirmDelete = await confirm({
       message: 'Are you sure you want to delete this query?',

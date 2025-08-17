@@ -5,7 +5,7 @@ import { BaseMenu } from './base-menu.mjs'
 export class MainMenu extends BaseMenu {
   async show(sheet) {
     const title = `📊 Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}`
-    console.log(chalk.gray('Navigate with arrow keys, select with Enter\n'))
+    console.log(chalk.cyan('Navigate with arrow keys, select with Enter\n'))
 
     try {
       const schemas = await sheet.listSchemas()
@@ -24,7 +24,7 @@ export class MainMenu extends BaseMenu {
         
         // Add separator if we have schemas
         choices.push({
-          name: chalk.gray('--- Actions ---'),
+          name: chalk.cyan('--- Actions ---'),
           value: 'separator',
           disabled: ''
         })

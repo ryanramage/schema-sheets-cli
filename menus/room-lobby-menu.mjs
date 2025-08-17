@@ -13,7 +13,7 @@ export class RoomLobbyMenu extends BaseMenu {
 
   async show() {
     const title = '🏠 Room Lobby'
-    console.log(chalk.gray('Manage your rooms and join schema sheets\n'))
+    console.log(chalk.cyan('Manage your rooms and join schema sheets\n'))
 
     const rooms = await this.lobby.listRooms()
     const hasSigningConfig = signingConfigExists()
@@ -43,7 +43,7 @@ export class RoomLobbyMenu extends BaseMenu {
     // Add existing rooms to the menu
     if (rooms.length > 0) {
       choices.push({
-        name: chalk.gray('--- Known Rooms ---'),
+        name: chalk.cyan('--- Known Rooms ---'),
         value: 'separator',
         disabled: ''
       })
@@ -77,7 +77,7 @@ export class RoomLobbyMenu extends BaseMenu {
 
   async showSetupSigning() {
     const title = '🔐 Setup Signing'
-    console.log(chalk.gray('Configure your Keet identity for signing data\n'))
+    console.log(chalk.cyan('Configure your Keet identity for signing data\n'))
 
     try {
       const keetUsername = await this.getInput('Enter your Keet username:', {
@@ -105,7 +105,7 @@ export class RoomLobbyMenu extends BaseMenu {
       
       if (signingConfig) {
         console.log(chalk.green('✅ Signing configuration created successfully!'))
-        console.log(chalk.gray(`Identity: ${Id.normalize(signingConfig.identityPublicKey).substring(0, 16)}...`))
+        console.log(chalk.cyan(`Identity: ${Id.normalize(signingConfig.identityPublicKey).substring(0, 16)}...`))
       } else {
         throw new Error('Failed to create signing configuration')
       }
@@ -136,7 +136,7 @@ export class RoomLobbyMenu extends BaseMenu {
 
       if (signingConfig && signingConfig.keetUsername) {
         username = signingConfig.keetUsername
-        console.log(chalk.gray(`Using Keet username: ${username}`))
+        console.log(chalk.cyan(`Using Keet username: ${username}`))
       } else {
         username = await this.getInput('Enter your username:', {
           validate: (input) => {
