@@ -368,7 +368,7 @@ export async function showRowActionsMenu(row, roomName = 'Unknown') {
     message: 'What would you like to do with this row?',
     choices: [
       {
-        name: '👁️ View Full JSON',
+        name: '👁️  View Full JSON',
         value: 'view',
         description: 'Display the complete JSON data'
       },
