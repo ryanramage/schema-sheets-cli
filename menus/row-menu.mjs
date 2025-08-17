@@ -101,7 +101,7 @@ export class RowMenu extends BaseMenu {
       
       // Create filter context to remember current filter state
       const filterContext = {
-        filter: listOptions,
+        filter,
         filterType,
         jmesQuery
       }
