@@ -13,7 +13,7 @@
   "license": "MIT",
   "description": "p2p multiwriter form collection with a focus on timeseries query",
   "dependencies": {
-    "@holepunchto/blind-peering": "^1.8.2",
+    "blind-peering": "^1.8.2",
     "@inquirer/password": "^4.0.17",
     "@inquirer/prompts": "^7.8.1",
     "ajv": "^8.17.1",

@@ -2,7 +2,7 @@
 
 import Corestore from 'corestore'
 import Hyperswarm from 'hyperswarm'
-import BlindPeering from '@holepunchto/blind-peering'
+import BlindPeering from 'blind-peering'
 import fs from 'fs'
 import { join } from 'path'
 import { makeDirectory } from 'make-dir'
