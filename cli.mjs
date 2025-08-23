@@ -35,8 +35,14 @@ try {
 // Ensure storage directory exists
 await makeDirectory(config.storage)
 
+// if there is one argument to the app, lets use that as a storage suffix
+
+const corestoreSuffix = process.argv[2]
+// strip out an any characters
+const corestoreDirName = ? corestoreSuffix : 'corestore-${corestoreSuffix}' : 'corestore'
+
 // Create corestore subdirectory
-const corestorePath = join(config.storage, 'corestore')
+const corestorePath = join(config.storage, corestoreDirName)
 await makeDirectory(corestorePath)
 
 const store = new Corestore(corestorePath)
