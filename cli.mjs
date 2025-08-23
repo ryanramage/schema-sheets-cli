@@ -36,10 +36,17 @@ try {
 await makeDirectory(config.storage)
 
 // if there is one argument to the app, lets use that as a storage suffix
-
 const corestoreSuffix = process.argv[2]
-// strip out an any characters
-const corestoreDirName = ? corestoreSuffix : 'corestore-${corestoreSuffix}' : 'corestore'
+
+// Create directory name, sanitizing any bad characters
+let corestoreDirName = 'corestore'
+if (corestoreSuffix) {
+  // Remove any characters that aren't alphanumeric, hyphens, or underscores
+  const sanitizedSuffix = corestoreSuffix.replace(/[^a-zA-Z0-9\-_]/g, '')
+  if (sanitizedSuffix) {
+    corestoreDirName = `corestore-${sanitizedSuffix}`
+  }
+}
 
 // Create corestore subdirectory
 const corestorePath = join(config.storage, corestoreDirName)
