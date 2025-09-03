@@ -4,6 +4,11 @@ import Ajv from 'ajv'
 import addFormats from "ajv-formats"
 import { selectJsonFile, readJsonFile, downloadJsonFromUrl } from '../utils/file-helpers.mjs'
 import { issueSchema } from '../examples/issue-schema.mjs'
+import fs from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { spawn } from 'child_process'
+import crypto from 'crypto'
 
 export class SheetOperations {
   constructor() {
@@ -248,6 +253,187 @@ export class SheetOperations {
     } catch (error) {
       console.error(chalk.red('Error adding row:'), error.message)
       throw error
+    }
+  }
+
+  async editSchemaInEditor(sheet, schema) {
+    const tempFileName = `schema-${schema.schemaId}-${crypto.randomBytes(8).toString('hex')}.json`
+    const tempFilePath = join(tmpdir(), tempFileName)
+    
+    try {
+      // Write current schema to temporary file
+      const schemaJson = JSON.stringify(schema.jsonSchema, null, 2)
+      fs.writeFileSync(tempFilePath, schemaJson, 'utf8')
+      
+      console.log(chalk.cyan(`Opening schema in editor: ${tempFilePath}`))
+      console.log(chalk.yellow('Save and close the editor when you\'re done editing...'))
+      
+      // Determine the editor command based on platform and environment
+      let editorCommand
+      let editorArgs = [tempFilePath]
+      
+      if (process.env.EDITOR) {
+        // Use user's preferred editor from environment
+        editorCommand = process.env.EDITOR
+      } else if (process.platform === 'darwin') {
+        // macOS - try to use the default editor
+        editorCommand = 'open'
+        editorArgs = ['-W', '-t', tempFilePath] // -W waits for app to close, -t opens in text editor
+      } else if (process.platform === 'win32') {
+        // Windows
+        editorCommand = 'notepad'
+      } else {
+        // Linux/Unix - try common editors
+        const editors = ['code', 'nano', 'vim', 'vi', 'gedit']
+        editorCommand = editors.find(editor => {
+          try {
+            // Check if editor exists in PATH
+            require('child_process').execSync(`which ${editor}`, { stdio: 'ignore' })
+            return true
+          } catch {
+            return false
+          }
+        }) || 'vi' // fallback to vi
+      }
+      
+      // Launch editor and wait for it to close
+      await new Promise((resolve, reject) => {
+        const editorProcess = spawn(editorCommand, editorArgs, {
+          stdio: 'inherit',
+          shell: true
+        })
+        
+        editorProcess.on('close', (code) => {
+          if (code === 0) {
+            resolve()
+          } else {
+            reject(new Error(`Editor exited with code ${code}`))
+          }
+        })
+        
+        editorProcess.on('error', (error) => {
+          reject(new Error(`Failed to launch editor: ${error.message}`))
+        })
+      })
+      
+      // Read the edited file
+      let editedSchemaJson
+      try {
+        const editedContent = fs.readFileSync(tempFilePath, 'utf8')
+        editedSchemaJson = JSON.parse(editedContent)
+      } catch (error) {
+        return {
+          updated: false,
+          cancelled: false,
+          error: `Invalid JSON in edited file: ${error.message}`
+        }
+      }
+      
+      // Check if schema was actually changed
+      const originalSchemaString = JSON.stringify(schema.jsonSchema, null, 2)
+      const editedSchemaString = JSON.stringify(editedSchemaJson, null, 2)
+      
+      if (originalSchemaString === editedSchemaString) {
+        return {
+          updated: false,
+          cancelled: false,
+          message: 'No changes detected'
+        }
+      }
+      
+      // Validate the edited schema is a valid JSON Schema
+      const ajv = new Ajv({ allErrors: true })
+      addFormats(ajv)
+      
+      try {
+        // Try to compile the schema to validate it's a valid JSON Schema
+        ajv.compile(editedSchemaJson)
+      } catch (error) {
+        return {
+          updated: false,
+          cancelled: false,
+          error: `Invalid JSON Schema: ${error.message}`
+        }
+      }
+      
+      // Show preview of changes
+      console.log(chalk.cyan('\nEdited Schema Preview:'))
+      console.log(JSON.stringify(editedSchemaJson, null, 2))
+      console.log('')
+      
+      const confirmUpdate = await confirm({
+        message: 'Update the schema with these changes?',
+        default: true
+      })
+      
+      if (!confirmUpdate) {
+        return {
+          updated: false,
+          cancelled: true,
+          message: 'Schema update cancelled by user'
+        }
+      }
+      
+      // Update the schema
+      await sheet.updateSchema(schema.schemaId, editedSchemaJson, { name: schema.name })
+      
+      const warnings = []
+      
+      // Check for potentially breaking changes
+      if (this.hasBreakingChanges(schema.jsonSchema, editedSchemaJson)) {
+        warnings.push('Schema changes may affect existing data validation')
+      }
+      
+      return {
+        updated: true,
+        cancelled: false,
+        warnings
+      }
+      
+    } catch (error) {
+      throw new Error(`Failed to edit schema: ${error.message}`)
+    } finally {
+      // Clean up temporary file
+      try {
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath)
+        }
+      } catch (error) {
+        console.warn(chalk.yellow(`Warning: Could not delete temporary file: ${error.message}`))
+      }
+    }
+  }
+
+  /**
+   * Check if schema changes might break existing data
+   */
+  hasBreakingChanges(oldSchema, newSchema) {
+    // Simple heuristic checks for potentially breaking changes
+    try {
+      // Check if required fields were added
+      const oldRequired = oldSchema.required || []
+      const newRequired = newSchema.required || []
+      const addedRequired = newRequired.filter(field => !oldRequired.includes(field))
+      
+      if (addedRequired.length > 0) {
+        return true
+      }
+      
+      // Check if field types changed
+      const oldProperties = oldSchema.properties || {}
+      const newProperties = newSchema.properties || {}
+      
+      for (const [fieldName, oldProp] of Object.entries(oldProperties)) {
+        const newProp = newProperties[fieldName]
+        if (newProp && oldProp.type && newProp.type && oldProp.type !== newProp.type) {
+          return true
+        }
+      }
+      
+      return false
+    } catch (error) {
+      // If we can't analyze, assume there might be breaking changes
+      return true
     }
   }
 
