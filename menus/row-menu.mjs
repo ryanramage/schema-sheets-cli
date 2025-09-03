@@ -79,6 +79,11 @@ export class RowMenu extends BaseMenu {
         description: 'Add a new row to this schema'
       },
       {
+        name: '✏️ Edit Schema',
+        value: 'edit-schema',
+        description: 'Edit the JSON schema definition'
+      },
+      {
         name: '🎨 UI Schema',
         value: 'ui-schema',
         description: 'Manage UI schemas for this schema'
@@ -103,6 +108,8 @@ export class RowMenu extends BaseMenu {
         return this.showFilterRows(sheet, schema, this.show.bind(this))
       case 'add-row':
         return this.showAddRow(sheet, schema, this.show.bind(this))
+      case 'edit-schema':
+        return this.showEditSchema(sheet, schema, this.show.bind(this))
       case 'ui-schema':
         return this.showUISchemaMenu(sheet, schema, this.show.bind(this))
       case 'manage-queries':
@@ -488,6 +495,50 @@ export class RowMenu extends BaseMenu {
     } finally {
       await webServer.stop()
       console.log(chalk.cyan('Web server stopped'))
+    }
+  }
+
+  async showEditSchema(sheet, schema, returnCallback) {
+    const title = `✏️ Edit Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}`
+    
+    console.clear()
+    console.log(chalk.blue.bold(title + '\n'))
+    console.log(chalk.cyan('This will open your default editor to modify the JSON schema.'))
+    console.log(chalk.yellow('⚠️ Be careful when editing - invalid schemas may break existing data!\n'))
+
+    const proceed = await confirm({
+      message: 'Open schema in your default editor?',
+      default: true
+    })
+
+    if (!proceed) {
+      return returnCallback(sheet, schema)
+    }
+
+    try {
+      const result = await this.sheetOps.editSchemaInEditor(sheet, schema)
+      
+      if (result.updated) {
+        console.log(chalk.green('✅ Schema updated successfully!'))
+        if (result.warnings && result.warnings.length > 0) {
+          console.log(chalk.yellow('\nWarnings:'))
+          result.warnings.forEach(warning => {
+            console.log(chalk.yellow(`  • ${warning}`))
+          })
+        }
+      } else if (result.cancelled) {
+        console.log(chalk.yellow('Schema editing cancelled - no changes made'))
+      } else {
+        console.log(chalk.cyan('No changes detected in schema'))
+      }
+      
+      await this.waitForContinue()
+      return returnCallback(sheet, schema)
+      
+    } catch (error) {
+      console.error(chalk.red('Error editing schema:'), error.message)
+      await this.waitForContinue()
+      return returnCallback(sheet, schema)
     }
   }
 
