@@ -375,7 +375,7 @@ export class SheetOperations {
       }
       
       // Update the schema
-      await sheet.updateSchema(schema.schemaId, editedSchemaJson, { name: schema.name })
+      await sheet.updateSchema(schema.schemaId, editedSchemaJson)
       
       const warnings = []
       
