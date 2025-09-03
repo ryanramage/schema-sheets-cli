@@ -577,8 +577,8 @@ export class RowMenu extends BaseMenu {
         return returnCallback(sheet, schema)
       }
 
-      // Update the schema with the new name (keeping the same JSON schema)
-      await sheet.updateSchema(schema.schemaId, schema.jsonSchema, { name: newName.trim() })
+      // Rename the schema using the correct API
+      await sheet.renameSchema(schema.schemaId, newName.trim())
       
       console.log(chalk.green(`✅ Schema renamed from "${schema.name}" to "${newName.trim()}" successfully!`))
       
