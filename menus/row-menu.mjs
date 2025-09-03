@@ -533,6 +533,10 @@ export class RowMenu extends BaseMenu {
             console.log(chalk.yellow(`  • ${warning}`))
           })
         }
+        
+        await this.waitForContinue()
+        // Use the updated schema object to ensure we have the latest changes
+        return returnCallback(sheet, result.updatedSchema)
       } else if (result.cancelled) {
         console.log(chalk.yellow('Schema editing cancelled - no changes made'))
       } else {

@@ -387,7 +387,8 @@ export class SheetOperations {
       return {
         updated: true,
         cancelled: false,
-        warnings
+        warnings,
+        updatedSchema: { ...schema, jsonSchema: editedSchemaJson }
       }
       
     } catch (error) {
