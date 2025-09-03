@@ -582,8 +582,8 @@ export class RowMenu extends BaseMenu {
       
       console.log(chalk.green(`✅ Schema renamed from "${schema.name}" to "${newName.trim()}" successfully!`))
       
-      // Fetch the updated schema to get the new name
-      const updatedSchema = await sheet.getSchema(schema.schemaId)
+      // Create updated schema object with the new name
+      const updatedSchema = { ...schema, name: newName.trim() }
       
       await this.waitForContinue()
       return returnCallback(sheet, updatedSchema)
