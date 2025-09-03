@@ -84,6 +84,11 @@ export class RowMenu extends BaseMenu {
         description: 'Edit the JSON schema definition'
       },
       {
+        name: '📝 Rename Schema',
+        value: 'rename-schema',
+        description: 'Change the schema name'
+      },
+      {
         name: '🎨 UI Schema',
         value: 'ui-schema',
         description: 'Manage UI schemas for this schema'
@@ -110,6 +115,8 @@ export class RowMenu extends BaseMenu {
         return this.showAddRow(sheet, schema, this.show.bind(this))
       case 'edit-schema':
         return this.showEditSchema(sheet, schema, this.show.bind(this))
+      case 'rename-schema':
+        return this.showRenameSchema(sheet, schema, this.show.bind(this))
       case 'ui-schema':
         return this.showUISchemaMenu(sheet, schema, this.show.bind(this))
       case 'manage-queries':
@@ -537,6 +544,49 @@ export class RowMenu extends BaseMenu {
       
     } catch (error) {
       console.error(chalk.red('Error editing schema:'), error.message)
+      await this.waitForContinue()
+      return returnCallback(sheet, schema)
+    }
+  }
+
+  async showRenameSchema(sheet, schema, returnCallback) {
+    const title = `📝 Rename Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}`
+    
+    console.clear()
+    console.log(chalk.blue.bold(title + '\n'))
+    console.log(chalk.cyan(`Current schema name: ${schema.name}\n`))
+
+    try {
+      const newName = await this.getInput('Enter new schema name:', {
+        default: schema.name,
+        validate: (input) => {
+          if (!input.trim()) return 'Schema name is required'
+          if (input.trim() === schema.name) return 'New name must be different from current name'
+          return true
+        }
+      })
+
+      const confirmRename = await confirm({
+        message: `Rename schema from "${schema.name}" to "${newName.trim()}"?`,
+        default: true
+      })
+
+      if (!confirmRename) {
+        console.log(chalk.yellow('Schema rename cancelled'))
+        await this.waitForContinue()
+        return returnCallback(sheet, schema)
+      }
+
+      // Update the schema with the new name (keeping the same JSON schema)
+      await sheet.updateSchema(schema.schemaId, schema.jsonSchema, { name: newName.trim() })
+      
+      console.log(chalk.green(`✅ Schema renamed from "${schema.name}" to "${newName.trim()}" successfully!`))
+      
+      await this.waitForContinue()
+      return returnCallback(sheet, schema)
+      
+    } catch (error) {
+      console.error(chalk.red('Error renaming schema:'), error.message)
       await this.waitForContinue()
       return returnCallback(sheet, schema)
     }
