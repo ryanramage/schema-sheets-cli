@@ -13,12 +13,12 @@
   "license": "MIT",
   "description": "p2p multiwriter form collection with a focus on timeseries query",
   "dependencies": {
-    "blind-peering": "^1.8.2",
     "@inquirer/password": "^4.0.17",
     "@inquirer/prompts": "^7.8.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "b4a": "^1.6.7",
+    "blind-peering": "^1.8.2",
     "chalk": "^5.5.0",
     "cli-table3": "^0.6.5",
     "corestore": "^7.4.5",
@@ -31,7 +31,7 @@
     "keet-identity-key": "^3.1.0",
     "make-dir": "^5.0.0",
     "protomux-wakeup": "^2.5.0",
-    "schema-sheets": "^3.0.0",
+    "schema-sheets": "^3.1.1",
     "sodium-native": "^5.0.6",
     "to-clipboard-android": "^0.2.0",
     "z32": "^1.1.0"
