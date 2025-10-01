@@ -62,6 +62,8 @@ export class WebFormServer {
         await this.serveFile(res, 'assets/app.js', 'application/javascript')
       } else if (pathname === '/styles.css') {
         await this.serveFile(res, 'assets/styles.css', 'text/css')
+      } else if (pathname === '/island-wealth-theme.css') {
+        await this.serveFile(res, 'assets/island-wealth-theme.css', 'text/css')
       } else if (pathname === '/favicon.ico') {
         // Return empty favicon to prevent 404
         res.writeHead(204)

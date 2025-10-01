@@ -1,0 +1,16 @@
+{
+  "keet_username": {
+    "ui:autofocus": true,
+    "ui:placeholder": "Your answer"
+  },
+  "github": {
+    "ui:placeholder": "Your answer"
+  },
+  "description": {
+    "ui:widget": "textarea",
+    "ui:placeholder": "Your answer",
+    "ui:options": {
+      "rows": 4
+    }
+  }
+}

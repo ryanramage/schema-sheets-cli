@@ -1,0 +1,20 @@
+{
+  "ui:classNames": "island-wealth-form",
+  "keet_username": {
+    "ui:autofocus": true,
+    "ui:placeholder": "Your answer",
+    "ui:classNames": "island-field gold-accent"
+  },
+  "github": {
+    "ui:placeholder": "Your answer",
+    "ui:classNames": "island-field"
+  },
+  "description": {
+    "ui:widget": "textarea",
+    "ui:placeholder": "Your answer",
+    "ui:options": {
+      "rows": 4
+    },
+    "ui:classNames": "island-field island-textarea"
+  }
+}

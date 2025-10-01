@@ -1,6 +1,7 @@
 {
   "name": "schema-sheets-cli",
   "version": "2.0.1",
+  "type": "module",
   "main": "index.js",
   "bin": {
     "schema-sheets": "./cli.mjs"
@@ -12,6 +13,10 @@
   },
   "license": "MIT",
   "description": "p2p multiwriter form collection with a focus on timeseries query",
+  "scripts": {
+    "test-child": "node schema-sheets-test/test-child-process.js",
+    "test-module": "node test-module.js"
+  },
   "dependencies": {
     "@holepunchto/blind-peering": "^1.8.2",
     "@inquirer/password": "^4.0.17",
@@ -24,15 +29,18 @@
     "corestore": "^7.4.5",
     "cosmiconfig": "^9.0.0",
     "env-paths": "^3.0.0",
+    "graceful-goodbye": "^1.3.1",
     "hypercore-crypto": "^3.6.1",
     "hypercore-id-encoding": "^1.3.0",
     "hyperswarm": "^4.12.1",
     "inquirer-file-selector": "^0.6.2",
     "keet-identity-key": "^3.1.0",
     "make-dir": "^5.0.0",
+    "paparam": "^0.2.0",
     "protomux-wakeup": "^2.5.0",
     "schema-sheets": "^3.0.0",
     "sodium-native": "^5.0.6",
+    "temp-path": "^1.0.0",
     "to-clipboard-android": "^0.2.0",
     "z32": "^1.1.0"
   }

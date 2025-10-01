@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "title": "Keet Bots API Early Access",
+  "description": "Sign up to be enrolled in Keet Bots Early Access! Build your bots using the Bot API. We can't wait to see what you build!",
+  "properties": {
+    "keet_username": {
+      "type": "string",
+      "title": "Your Keet username"
+    },
+    "github": {
+      "type": "string",
+      "title": "Your GH"
+    },
+    "description": {
+      "type": "string",
+      "title": "What bots do you want to build?"
+    }
+  },
+  "required": [
+    "keet_username",
+    "description"
+  ]
+}

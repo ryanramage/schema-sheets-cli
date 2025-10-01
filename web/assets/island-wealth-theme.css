@@ -1,0 +1,277 @@
+/* ============================================
+   ISLAND WEALTH THEME ADD-ON
+   Safe to add to Ryan's styles.css
+   Only applies to forms with .island-wealth-form class
+   
+   Author: @Storyteller
+   Date: 2025-09-30
+   ============================================ */
+
+/* Color Palette */
+:root {
+  --island-gold: #FFD700;
+  --island-gold-dim: #B8860B;
+  --island-green: #2d5016;
+  --island-green-light: #4a7c25;
+  --island-black: #0a0a0a;
+  --island-white: #f5f5f5;
+  --island-gray: #888;
+}
+
+/* ============================================
+   CONTAINER OVERRIDE (Island Wealth only)
+   ============================================ */
+
+.island-wealth-form ~ .container,
+body:has(.island-wealth-form) .container {
+  background: rgba(26, 26, 26, 0.95) !important;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 
+    0 0 40px rgba(255, 215, 0, 0.2),
+    0 0.5rem 2rem rgba(0, 0, 0, 0.8);
+}
+
+/* ============================================
+   HEADER STYLING (Island Wealth only)
+   ============================================ */
+
+.island-wealth-form ~ .header h1,
+body:has(.island-wealth-form) .header h1 {
+  color: var(--island-gold) !important;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.island-wealth-form ~ .header,
+body:has(.island-wealth-form) .header {
+  border-bottom: 2px solid var(--island-gold) !important;
+}
+
+/* Palm tree logo decoration */
+.island-wealth-form ~ .header::before,
+body:has(.island-wealth-form) .header::before {
+  content: "🌴";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 48px;
+  opacity: 0.7;
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+  z-index: 10;
+}
+
+/* ============================================
+   FORM FIELDS (Island Wealth)
+   ============================================ */
+
+/* Labels */
+.island-field label,
+.island-field .control-label {
+  color: var(--island-gold) !important;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  display: block;
+  letter-spacing: 0.5px;
+}
+
+/* Required asterisk */
+.island-field .required {
+  color: var(--island-gold-dim);
+}
+
+/* Input fields */
+.island-field input[type="text"],
+.island-field input[type="email"],
+.island-field input[type="url"],
+.island-field input[type="password"],
+.island-field select {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border: 2px solid rgba(255, 215, 0, 0.3) !important;
+  color: var(--island-white) !important;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+/* Textarea */
+.island-field textarea,
+.island-textarea textarea {
+  background: rgba(0, 0, 0, 0.6) !important;
+  border: 2px solid rgba(255, 215, 0, 0.3) !important;
+  color: var(--island-white) !important;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  width: 100%;
+  resize: vertical;
+  min-height: 120px;
+  transition: all 0.3s ease;
+  font-family: inherit;
+}
+
+/* Focus state */
+.island-field input:focus,
+.island-field textarea:focus,
+.island-field select:focus {
+  outline: none !important;
+  border-color: var(--island-gold) !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4) !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Placeholder text */
+.island-field input::placeholder,
+.island-field textarea::placeholder {
+  color: var(--island-gray);
+  opacity: 0.7;
+}
+
+/* Gold accent field (special styling) */
+.gold-accent input {
+  border-color: var(--island-gold) !important;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+/* ============================================
+   BUTTONS (Island Wealth)
+   ============================================ */
+
+/* Primary button in Island forms */
+.island-wealth-form .btn-primary,
+.island-wealth-form button[type="submit"],
+body:has(.island-wealth-form) .form-actions .btn-primary {
+  background: linear-gradient(135deg, var(--island-gold), var(--island-gold-dim)) !important;
+  border: none !important;
+  color: var(--island-black) !important;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3) !important;
+}
+
+.island-wealth-form .btn-primary:hover,
+body:has(.island-wealth-form) .form-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5) !important;
+  background: var(--island-gold) !important;
+}
+
+/* Secondary button in Island forms */
+.island-wealth-form .btn-outline-secondary,
+body:has(.island-wealth-form) .form-actions .btn-outline-secondary {
+  background: transparent !important;
+  border: 2px solid var(--island-gold) !important;
+  color: var(--island-gold) !important;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.island-wealth-form .btn-outline-secondary:hover,
+body:has(.island-wealth-form) .form-actions .btn-outline-secondary:hover {
+  background: rgba(255, 215, 0, 0.1) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+}
+
+/* Disabled state */
+.island-wealth-form .btn-primary:disabled,
+.island-wealth-form .btn-outline-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ============================================
+   VALIDATION & ERRORS (Island Wealth)
+   ============================================ */
+
+.island-field .has-error input,
+.island-field .has-error textarea {
+  border-color: #ff6b6b !important;
+}
+
+.island-field .help-block {
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE (Island Wealth)
+   ============================================ */
+
+@media (max-width: 768px) {
+  .island-wealth-form ~ .header::before,
+  body:has(.island-wealth-form) .header::before {
+    font-size: 32px;
+    right: 5px;
+    top: 5px;
+  }
+
+  body:has(.island-wealth-form) .form-actions {
+    flex-direction: column;
+  }
+
+  .island-wealth-form .btn-primary,
+  .island-wealth-form .btn-outline-secondary {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .island-field input,
+  .island-field textarea {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* ============================================
+   ANIMATIONS (Island Wealth)
+   ============================================ */
+
+@keyframes islandFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+body:has(.island-wealth-form) .container {
+  animation: islandFadeIn 0.5s ease-out;
+}
+
+/* ============================================
+   ACCESSIBILITY (Island Wealth)
+   ============================================ */
+
+/* Focus visible for keyboard navigation */
+.island-field *:focus-visible {
+  outline: 2px solid var(--island-gold);
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .island-wealth-form *,
+  body:has(.island-wealth-form) * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
