@@ -23,7 +23,7 @@ npx schema-sheets-cli
 Schema sheets is in alpha right now. The underlying db spec is not being migrated as we work on features. So when we release new code, if you use a new version 
 you may have to clear out your data dir, and have data loss. 
 
-On osx to clear schema sheets, do the following
+On MacOS to clear schema sheets, do the following
 
 ```
 ~/Library/Application Support
