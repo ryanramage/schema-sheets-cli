@@ -1153,7 +1153,7 @@ export class RowMenu extends BaseMenu {
         }
       })
 
-      await sheet.updateQuery(query.queryId, newQueryName.trim(), newQueryText.trim(), query.listView)
+      await sheet.updateQuery(query.queryId, newQueryName.trim(), newQueryText.trim(), !!query.listView)
       console.log(chalk.green(`✅ Query "${newQueryName.trim()}" updated successfully!`))
       
       await this.waitForContinue()
