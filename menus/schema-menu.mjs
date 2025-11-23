@@ -18,8 +18,13 @@ export class SchemaMenu extends BaseMenu {
       },
       {
         name: '📋 Use Example Issue Schema',
-        value: 'example',
+        value: 'example-issue',
         description: 'Use a pre-built issue tracking schema'
+      },
+      {
+        name: '🔑 Use Example API Keys Schema',
+        value: 'example-apikeys',
+        description: 'Use a pre-built API keys management schema'
       },
       {
         name: chalk.cyan('← Back to Main Menu'),
