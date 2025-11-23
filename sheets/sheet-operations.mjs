@@ -4,6 +4,7 @@ import Ajv from 'ajv'
 import addFormats from "ajv-formats"
 import { selectJsonFile, readJsonFile, downloadJsonFromUrl } from '../utils/file-helpers.mjs'
 import { issueSchema } from '../examples/issue-schema.mjs'
+import { apiKeysSchema } from '../examples/apiKeys-schema.mjs'
 import fs from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -193,9 +194,14 @@ export class SheetOperations {
 
       console.log(chalk.cyan('Downloading schema...'))
       schemaContent = await downloadJsonFromUrl(url)
-    } else if (method === 'example') {
+    } else if (method === 'example-issue') {
       schemaContent = issueSchema
       console.log(chalk.cyan('\nUsing example issue schema:'))
+      console.log(JSON.stringify(schemaContent, null, 2))
+      console.log('')
+    } else if (method === 'example-apikeys') {
+      schemaContent = apiKeysSchema
+      console.log(chalk.cyan('\nUsing example API Keys schema:'))
       console.log(JSON.stringify(schemaContent, null, 2))
       console.log('')
     }
