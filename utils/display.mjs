@@ -219,22 +219,23 @@ export function createListViewRowChoices(transformedRows) {
       // Use list view data for display with smart width allocation
       const values = Object.values(row.listViewData)
       const keys = Object.keys(row.listViewData)
-      const stringValues = values.map(v => String(v || ''))
       const separatorSpace = (values.length - 1) * 3 // ' | ' separators
       let remainingWidth = availableWidth - separatorSpace
       
       const displayParts = []
       
       // First pass: allocate space for short values (< 20 chars)
+      // Use truncateValue to handle booleans properly
       const shortValues = []
       const longValues = []
       
-      stringValues.forEach((value, i) => {
-        if (value.length <= 20) {
-          shortValues.push({ index: i, value, key: keys[i] })
-          remainingWidth -= value.length
+      values.forEach((value, i) => {
+        const displayValue = truncateValue(value, 100) // Use large limit to get proper boolean conversion
+        if (displayValue.length <= 20) {
+          shortValues.push({ index: i, value: displayValue, key: keys[i] })
+          remainingWidth -= displayValue.length
         } else {
-          longValues.push({ index: i, value, key: keys[i] })
+          longValues.push({ index: i, value: displayValue, key: keys[i] })
         }
       })
       
@@ -242,14 +243,15 @@ export function createListViewRowChoices(transformedRows) {
       const longValueWidth = longValues.length > 0 ? Math.floor(remainingWidth / longValues.length) : 0
       
       // Build display parts in original order
-      stringValues.forEach((value, i) => {
+      values.forEach((value, i) => {
+        const displayValue = truncateValue(value, 100) // Use large limit to get proper boolean conversion
         const isShort = shortValues.some(sv => sv.index === i)
         if (isShort) {
-          displayParts.push(value)
+          displayParts.push(displayValue)
         } else {
-          const truncated = longValueWidth > 10 && value.length > longValueWidth 
-            ? value.substring(0, longValueWidth) + '...' 
-            : value
+          const truncated = longValueWidth > 10 && displayValue.length > longValueWidth 
+            ? displayValue.substring(0, longValueWidth) + '...' 
+            : displayValue
           displayParts.push(truncated)
         }
       })
@@ -357,22 +359,23 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
           const availableWidth = getAvailableWidth(15)
           
           // Smart width allocation: give short fields their needed space, rest to longer fields
-          const stringValues = values.map(v => String(v || ''))
           const separatorSpace = (values.length - 1) * 3 // ' | ' separators
           let remainingWidth = availableWidth - separatorSpace
           
           const displayParts = []
           
           // First pass: allocate space for short values (< 20 chars)
+          // Use truncateValue to handle booleans properly
           const shortValues = []
           const longValues = []
           
-          stringValues.forEach((value, i) => {
-            if (value.length <= 20) {
-              shortValues.push({ index: i, value, key: keys[i] })
-              remainingWidth -= value.length
+          values.forEach((value, i) => {
+            const displayValue = truncateValue(value, 100) // Use large limit to get proper boolean conversion
+            if (displayValue.length <= 20) {
+              shortValues.push({ index: i, value: displayValue, key: keys[i] })
+              remainingWidth -= displayValue.length
             } else {
-              longValues.push({ index: i, value, key: keys[i] })
+              longValues.push({ index: i, value: displayValue, key: keys[i] })
             }
           })
           
@@ -380,14 +383,15 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
           const longValueWidth = longValues.length > 0 ? Math.floor(remainingWidth / longValues.length) : 0
           
           // Build display parts in original order
-          stringValues.forEach((value, i) => {
+          values.forEach((value, i) => {
+            const displayValue = truncateValue(value, 100) // Use large limit to get proper boolean conversion
             const isShort = shortValues.some(sv => sv.index === i)
             if (isShort) {
-              displayParts.push(value)
+              displayParts.push(displayValue)
             } else {
-              const truncated = longValueWidth > 10 && value.length > longValueWidth 
-                ? value.substring(0, longValueWidth) + '...' 
-                : value
+              const truncated = longValueWidth > 10 && displayValue.length > longValueWidth 
+                ? displayValue.substring(0, longValueWidth) + '...' 
+                : displayValue
               displayParts.push(truncated)
             }
           })
