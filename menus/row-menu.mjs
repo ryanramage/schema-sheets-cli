@@ -182,6 +182,11 @@ export class RowMenu extends BaseMenu {
       message: 'Select date range:',
       choices: [
         {
+          name: '🚫 No Date Filter',
+          value: 'none',
+          description: 'Show all rows (no date restriction)'
+        },
+        {
           name: '📅 Today',
           value: 'today',
           description: 'Show rows from today'
@@ -229,7 +234,11 @@ export class RowMenu extends BaseMenu {
 
     let gte, lte
 
-    if (choice === 'custom') {
+    if (choice === 'none') {
+      // No date filter - set to null to indicate no date restriction
+      gte = null
+      lte = null
+    } else if (choice === 'custom') {
       console.log(chalk.cyan('\nEnter custom date range:'))
       
       // Default LTE to today
@@ -269,7 +278,14 @@ export class RowMenu extends BaseMenu {
     // Handle JMESPath query selection/creation
     const jmesQuery = await this.sheetOps.showQuerySelection(sheet, schema)
 
-    const filter = { gte, lte }
+    const filter = {}
+    
+    // Only add date filters if they're not null (i.e., not "no date filter")
+    if (gte !== null && lte !== null) {
+      filter.gte = gte
+      filter.lte = lte
+    }
+    
     if (jmesQuery && jmesQuery.trim()) {
       filter.query = jmesQuery.trim()
     }
@@ -284,7 +300,11 @@ export class RowMenu extends BaseMenu {
     console.clear()
     console.log(chalk.blue.bold(`📋 Filtered Rows - Schema: ${schema.name} - Room: ${this.roomManager.getCurrentRoomName() || 'Unknown'}\n`))
     
-    console.log(chalk.cyan(`Date Filter: ${formatDateRange(filterType, filter.gte, filter.lte)}`))
+    if (filterType === 'none') {
+      console.log(chalk.cyan(`Date Filter: No date restriction (all rows)`))
+    } else {
+      console.log(chalk.cyan(`Date Filter: ${formatDateRange(filterType, filter.gte, filter.lte)}`))
+    }
     
     if (jmesQuery) {
       console.log(chalk.cyan(`JMESPath Query: ${jmesQuery}`))
