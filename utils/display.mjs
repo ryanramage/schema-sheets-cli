@@ -143,6 +143,11 @@ export function truncateValue(value, maxLength) {
     return ''
   }
   
+  // Handle boolean values with short representations to save space
+  if (typeof value === 'boolean') {
+    return value ? 'T' : 'F'  // T/F is most compact
+  }
+  
   const stringValue = String(value)
   if (stringValue.length <= maxLength) {
     return stringValue
