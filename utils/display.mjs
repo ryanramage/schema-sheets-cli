@@ -211,10 +211,45 @@ export function createListViewRowChoices(transformedRows) {
   
   return transformedRows.map(row => {
     if (row.listViewData) {
-      // Use list view data for display
+      // Use list view data for display with smart width allocation
       const values = Object.values(row.listViewData)
-      const maxValueWidth = Math.floor(availableWidth / Math.max(values.length, 1))
-      const displayText = values.map(v => truncateValue(v, maxValueWidth)).join(' | ')
+      const keys = Object.keys(row.listViewData)
+      const stringValues = values.map(v => String(v || ''))
+      const separatorSpace = (values.length - 1) * 3 // ' | ' separators
+      let remainingWidth = availableWidth - separatorSpace
+      
+      const displayParts = []
+      
+      // First pass: allocate space for short values (< 20 chars)
+      const shortValues = []
+      const longValues = []
+      
+      stringValues.forEach((value, i) => {
+        if (value.length <= 20) {
+          shortValues.push({ index: i, value, key: keys[i] })
+          remainingWidth -= value.length
+        } else {
+          longValues.push({ index: i, value, key: keys[i] })
+        }
+      })
+      
+      // Second pass: allocate remaining space to long values
+      const longValueWidth = longValues.length > 0 ? Math.floor(remainingWidth / longValues.length) : 0
+      
+      // Build display parts in original order
+      stringValues.forEach((value, i) => {
+        const isShort = shortValues.some(sv => sv.index === i)
+        if (isShort) {
+          displayParts.push(value)
+        } else {
+          const truncated = longValueWidth > 10 && value.length > longValueWidth 
+            ? value.substring(0, longValueWidth) + '...' 
+            : value
+          displayParts.push(truncated)
+        }
+      })
+      
+      const displayText = displayParts.join(' | ')
       return {
         name: displayText,
         value: row.uuid,
@@ -313,12 +348,46 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
       choices = rows.map((row, index) => {
         if (row.json && typeof row.json === 'object' && !Array.isArray(row.json)) {
           const values = Object.values(row.json)
+          const keys = Object.keys(row.json)
           const availableWidth = getAvailableWidth(15)
-          const maxValueWidth = Math.floor(availableWidth / Math.max(values.length, 1))
-          const displayText = values.map(v => {
-            const stringValue = String(v || '')
-            return stringValue.length > maxValueWidth ? stringValue.substring(0, maxValueWidth) + '...' : stringValue
-          }).join(' | ')
+          
+          // Smart width allocation: give short fields their needed space, rest to longer fields
+          const stringValues = values.map(v => String(v || ''))
+          const separatorSpace = (values.length - 1) * 3 // ' | ' separators
+          let remainingWidth = availableWidth - separatorSpace
+          
+          const displayParts = []
+          
+          // First pass: allocate space for short values (< 20 chars)
+          const shortValues = []
+          const longValues = []
+          
+          stringValues.forEach((value, i) => {
+            if (value.length <= 20) {
+              shortValues.push({ index: i, value, key: keys[i] })
+              remainingWidth -= value.length
+            } else {
+              longValues.push({ index: i, value, key: keys[i] })
+            }
+          })
+          
+          // Second pass: allocate remaining space to long values
+          const longValueWidth = longValues.length > 0 ? Math.floor(remainingWidth / longValues.length) : 0
+          
+          // Build display parts in original order
+          stringValues.forEach((value, i) => {
+            const isShort = shortValues.some(sv => sv.index === i)
+            if (isShort) {
+              displayParts.push(value)
+            } else {
+              const truncated = longValueWidth > 10 && value.length > longValueWidth 
+                ? value.substring(0, longValueWidth) + '...' 
+                : value
+              displayParts.push(truncated)
+            }
+          })
+          
+          const displayText = displayParts.join(' | ')
           const timeDisplay = new Date(row.time).toLocaleString()
           return {
             name: `${String(index + 1).padStart(3)}. ${displayText}`,
