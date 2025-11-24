@@ -88,12 +88,14 @@ export function addRowToTable(table, row) {
 }
 
 export function createRowChoices(rows) {
+  const availableWidth = getAvailableWidth(10) // Reserve space for numbering only
+  
   return rows.map(row => {
     const jsonString = JSON.stringify(row.json || {})
-    const snippet = jsonString.substring(0, 40)
-    const uuidDisplay = (row.uuid || '').substring(0, 16)
+    const snippet = jsonString.substring(0, availableWidth)
+    const displaySnippet = snippet.length === availableWidth ? snippet + '...' : snippet
     return {
-      name: `${uuidDisplay}... - ${snippet}...`,
+      name: `${displaySnippet}`,
       value: row.uuid,
       description: 'View full JSON'
     }
@@ -205,24 +207,26 @@ export async function applyListViewQuery(rows, queryText) {
  * Create row choices for list view transformed data
  */
 export function createListViewRowChoices(transformedRows) {
+  const availableWidth = getAvailableWidth(10)
+  
   return transformedRows.map(row => {
     if (row.listViewData) {
       // Use list view data for display
       const values = Object.values(row.listViewData)
-      const displayText = values.map(v => truncateValue(v, 20)).join(' | ')
-      const uuidDisplay = (row.uuid || '').substring(0, 16)
+      const maxValueWidth = Math.floor(availableWidth / Math.max(values.length, 1))
+      const displayText = values.map(v => truncateValue(v, maxValueWidth)).join(' | ')
       return {
-        name: `${uuidDisplay}... - ${displayText}`,
+        name: displayText,
         value: row.uuid,
         description: 'View full JSON'
       }
     } else {
       // Fallback to JSON snippet
       const jsonString = JSON.stringify(row.originalJson || {})
-      const snippet = jsonString.substring(0, 40)
-      const uuidDisplay = (row.uuid || '').substring(0, 16)
+      const snippet = jsonString.substring(0, availableWidth)
+      const displaySnippet = snippet.length === availableWidth ? snippet + '...' : snippet
       return {
-        name: `${uuidDisplay}... - ${snippet}...`,
+        name: displaySnippet,
         value: row.uuid,
         description: 'View full JSON'
       }
