@@ -7,6 +7,14 @@ import { input, select } from '@inquirer/prompts'
 
 const execAsync = promisify(exec)
 
+/**
+ * Get available terminal width for content display
+ */
+export function getAvailableWidth(reservedSpace = 25) {
+  const terminalWidth = process.stdout.columns || 80
+  return Math.max(40, terminalWidth - reservedSpace)
+}
+
 export async function viewJsonWithFx(jsonData) {
   return new Promise((resolve, reject) => {
     // Save current terminal state
@@ -95,7 +103,12 @@ export function createRowChoices(rows) {
 /**
  * Create a dynamic table based on list view query results
  */
-export function createDynamicTable(columns, maxColumnWidth = 30) {
+export function createDynamicTable(columns, maxColumnWidth = null) {
+  // Use dynamic width if not specified
+  if (maxColumnWidth === null) {
+    const terminalWidth = process.stdout.columns || 80
+    maxColumnWidth = Math.max(20, Math.floor(terminalWidth / Math.max(columns.length, 1)) - 4)
+  }
   const colWidths = columns.map(col => Math.min(col.length + 2, maxColumnWidth))
   
   return new Table({
@@ -107,7 +120,13 @@ export function createDynamicTable(columns, maxColumnWidth = 30) {
 /**
  * Add a row to dynamic table with list view data
  */
-export function addDynamicRowToTable(table, listViewData, maxColumnWidth = 30) {
+export function addDynamicRowToTable(table, listViewData, maxColumnWidth = null) {
+  // Use dynamic width if not specified
+  if (maxColumnWidth === null) {
+    const terminalWidth = process.stdout.columns || 80
+    const columnCount = Object.keys(listViewData || {}).length
+    maxColumnWidth = Math.max(20, Math.floor(terminalWidth / Math.max(columnCount, 1)) - 4)
+  }
   const values = Object.values(listViewData || {}).map(value => 
     truncateValue(value, maxColumnWidth - 2)
   )
@@ -290,9 +309,11 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
       choices = rows.map((row, index) => {
         if (row.json && typeof row.json === 'object' && !Array.isArray(row.json)) {
           const values = Object.values(row.json)
+          const availableWidth = getAvailableWidth(30)
+          const maxValueWidth = Math.floor(availableWidth / Math.max(values.length, 1))
           const displayText = values.map(v => {
             const stringValue = String(v || '')
-            return stringValue.length > 30 ? stringValue.substring(0, 30) + '...' : stringValue
+            return stringValue.length > maxValueWidth ? stringValue.substring(0, maxValueWidth) + '...' : stringValue
           }).join(' | ')
           const rowIdDisplay = (row.uuid || '').substring(0, 8)
           const timeDisplay = new Date(row.time).toLocaleString()
@@ -341,10 +362,12 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
  * Create row choices with row numbers for better navigation
  */
 export function createRowChoicesWithNumbers(rows) {
+  const availableWidth = getAvailableWidth(25) // Reserve space for numbering and UUID
+  
   return rows.map((row, index) => {
     const jsonString = JSON.stringify(row.json || {})
-    const snippet = jsonString.substring(0, 50)
-    const displaySnippet = snippet.length === 50 ? snippet + '...' : snippet
+    const snippet = jsonString.substring(0, availableWidth)
+    const displaySnippet = snippet.length === availableWidth ? snippet + '...' : snippet
     const rowIdDisplay = (row.uuid || '').substring(0, 8)
     const timeDisplay = new Date(row.time).toLocaleString()
     return {
