@@ -309,24 +309,22 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
       choices = rows.map((row, index) => {
         if (row.json && typeof row.json === 'object' && !Array.isArray(row.json)) {
           const values = Object.values(row.json)
-          const availableWidth = getAvailableWidth(30)
+          const availableWidth = getAvailableWidth(15)
           const maxValueWidth = Math.floor(availableWidth / Math.max(values.length, 1))
           const displayText = values.map(v => {
             const stringValue = String(v || '')
             return stringValue.length > maxValueWidth ? stringValue.substring(0, maxValueWidth) + '...' : stringValue
           }).join(' | ')
-          const rowIdDisplay = (row.uuid || '').substring(0, 8)
           const timeDisplay = new Date(row.time).toLocaleString()
           return {
-            name: `${String(index + 1).padStart(3)}. ${rowIdDisplay}... | ${displayText}`,
+            name: `${String(index + 1).padStart(3)}. ${displayText}`,
             value: row.uuid,
             description: `Created: ${timeDisplay}`
           }
         } else {
-          const rowIdDisplay = (row.uuid || '').substring(0, 8)
           const timeDisplay = new Date(row.time).toLocaleString()
           return {
-            name: `${String(index + 1).padStart(3)}. ${rowIdDisplay}... | (error)`,
+            name: `${String(index + 1).padStart(3)}. (error)`,
             value: row.uuid,
             description: `Created: ${timeDisplay}`
           }
@@ -362,16 +360,15 @@ export async function displayRowsInteractively(rows, listViewQuery = null, title
  * Create row choices with row numbers for better navigation
  */
 export function createRowChoicesWithNumbers(rows) {
-  const availableWidth = getAvailableWidth(25) // Reserve space for numbering and UUID
+  const availableWidth = getAvailableWidth(10) // Reserve space for numbering only
   
   return rows.map((row, index) => {
     const jsonString = JSON.stringify(row.json || {})
     const snippet = jsonString.substring(0, availableWidth)
     const displaySnippet = snippet.length === availableWidth ? snippet + '...' : snippet
-    const rowIdDisplay = (row.uuid || '').substring(0, 8)
     const timeDisplay = new Date(row.time).toLocaleString()
     return {
-      name: `${String(index + 1).padStart(3)}. ${rowIdDisplay}... | ${displaySnippet}`,
+      name: `${String(index + 1).padStart(3)}. ${displaySnippet}`,
       value: row.uuid,
       description: `Created: ${timeDisplay}`
     }
